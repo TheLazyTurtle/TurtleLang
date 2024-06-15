@@ -1,0 +1,16 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TurtleLang", "TurtleLang\TurtleLang.csproj", "{45F3ED8B-6A70-495F-B189-56D7DFB8391A}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{45F3ED8B-6A70-495F-B189-56D7DFB8391A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{45F3ED8B-6A70-495F-B189-56D7DFB8391A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{45F3ED8B-6A70-495F-B189-56D7DFB8391A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{45F3ED8B-6A70-495F-B189-56D7DFB8391A}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
