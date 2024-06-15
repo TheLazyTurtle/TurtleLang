@@ -103,31 +103,38 @@ class Parser
 
     private void ParseArgs()
     {
+        TokenTypes tokenType;
         if (_prevToken.TokenType == TokenTypes.Call)
         {
-            // This is for when we try to pass an argument
-            ParseFunctionCallingArgs();
-            return;
+            tokenType = TokenTypes.ArgumentValue;
         }
-
-        ParseFunctionDefinitionArgs();
-    }
-
-    private void ParseFunctionCallingArgs()
-    {
+        else
+        {
+            tokenType = TokenTypes.ArgumentIdentifier;
+        }
+        
         var sb = new StringBuilder();
         
         while (PeekNextChar() != ')')
         {
-            // TODO: Handle spaces in variable
-            // TODO: Handle trailing comma
             var nextChar = GetNextChar();
+
+            if (nextChar == ',' &&  PeekNextCharSkipAllWhiteSpaces() == ')')
+                throw new Exception("Trailing comma is not allowed");
+
+            if (nextChar == ' ' && PeekNextChar() != ',')
+                throw new Exception("Variables are not allowed to have spaces");
             
             // End of var
             if (nextChar == ',')
             {
-                _tokens.Add(new Token(TokenTypes.ArgumentValue, sb.ToString().Trim()));
+                _tokens.Add(new Token(tokenType, sb.ToString().Trim()));
                 sb.Clear();
+
+                // Skip whitespace after comma if it is there
+                if (PeekNextChar() == ' ')
+                    GetNextChar();
+                
                 continue;
             }
             sb.Append(nextChar);
@@ -136,34 +143,7 @@ class Parser
         if (sb.Length == 0) 
             return;
         
-        var token = new Token(TokenTypes.ArgumentValue, sb.ToString().Trim());
-        _tokens.Add(token);
-    }
-
-    private void ParseFunctionDefinitionArgs()
-    {
-        var sb = new StringBuilder();
-        
-        while (PeekNextChar() != ')')
-        {
-            // TODO: Handle spaces in variable
-            // TODO: Handle trailing comma
-            var nextChar = GetNextChar();
-            
-            // End of var
-            if (nextChar == ',')
-            {
-                _tokens.Add(new Token(TokenTypes.ArgumentIdentifier, sb.ToString().Trim()));
-                sb.Clear();
-                continue;
-            }
-            sb.Append(nextChar);
-        }
-
-        if (sb.Length == 0) 
-            return;
-        
-        var token = new Token(TokenTypes.ArgumentIdentifier, sb.ToString().Trim());
+        var token = new Token(tokenType, sb.ToString().Trim());
         _tokens.Add(token);
     }
 
@@ -173,6 +153,20 @@ class Parser
             return null; 
         
         return _code[_currentIndex + 1];
+    }
+    
+    private char? PeekNextCharSkipAllWhiteSpaces()
+    {
+        if (_currentIndex + 1 >= _code.Length)
+            return null;
+
+        var index = 1;
+        var curChar = _code[_currentIndex + index];
+        while (curChar == ' ')
+        {
+            curChar = _code[_currentIndex + ++index];
+        }
+        return _code[_currentIndex + index];
     }
 
     private char? GetNextChar()

@@ -10,4 +10,14 @@ class RuntimeValue
         Type = type;
         Value = value;
     }
+
+    public override string ToString()
+    {
+        return Type switch
+        {
+            PrimitiveTypes.Int => $"{(int)Value}",
+            PrimitiveTypes.String => (string)Value,
+            var _ => throw new ArgumentOutOfRangeException()
+        };
+    }
 }

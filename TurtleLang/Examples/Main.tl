@@ -3,7 +3,7 @@
 }
 
 fn Second(i, j) {
-    Third();
+    Third(i, "asdf");
 }
 
 fn Third(varA, varB) {
