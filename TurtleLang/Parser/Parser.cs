@@ -103,26 +103,21 @@ class Parser
 
     private void ParseArgs()
     {
-        TokenTypes tokenType;
-        if (_prevToken.TokenType == TokenTypes.Call)
-        {
-            tokenType = TokenTypes.ArgumentValue;
-        }
-        else
-        {
-            tokenType = TokenTypes.ArgumentIdentifier;
-        }
+        var isStaticString = false;
+        var tokenType = _prevToken.TokenType == TokenTypes.Call ? TokenTypes.ArgumentValue : TokenTypes.ArgumentIdentifier;
         
         var sb = new StringBuilder();
         
         while (PeekNextChar() != ')')
         {
             var nextChar = GetNextChar();
+            if (nextChar == '\"')
+                isStaticString = !isStaticString;
 
             if (nextChar == ',' &&  PeekNextCharSkipAllWhiteSpaces() == ')')
                 throw new Exception("Trailing comma is not allowed");
 
-            if (nextChar == ' ' && PeekNextChar() != ',')
+            if (!isStaticString && nextChar == ' ' && PeekNextChar() != ',')
                 throw new Exception("Variables are not allowed to have spaces");
             
             // End of var

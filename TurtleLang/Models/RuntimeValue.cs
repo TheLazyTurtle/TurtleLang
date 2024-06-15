@@ -16,7 +16,7 @@ class RuntimeValue
         return Type switch
         {
             PrimitiveTypes.Int => $"{(int)Value}",
-            PrimitiveTypes.String => (string)Value,
+            PrimitiveTypes.String => ((string)Value).Replace("\"", ""),
             var _ => throw new ArgumentOutOfRangeException()
         };
     }

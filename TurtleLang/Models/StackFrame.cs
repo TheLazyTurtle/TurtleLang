@@ -34,4 +34,9 @@ class StackFrame
         
         return _runtimeValueByName[name];
     }
+
+    public IEnumerable<RuntimeValue> GetAllLocals()
+    {
+        return _runtimeValueByName.Values;
+    }
 }

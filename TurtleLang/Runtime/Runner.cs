@@ -111,29 +111,77 @@ class Runner
 
     private void HandleCall(AstNode node)
     {
+        if (IsBuildInFunction(node))
+        {
+            PushStackFrame();
+            HandleBuildInFunction(node);
+            return;
+        }
+        
+        var functionNode = _functionDefinitions[node.Value] as FunctionDefinitionAstNode;
+        Debug.Assert(functionNode != null);
+        
+        if (_stackFrameBeingBuild?.ArgumentCount > functionNode.ArgumentCount)
+            throw new Exception("To many arguments given for function");
+        
+        if (_stackFrameBeingBuild?.ArgumentCount < functionNode.ArgumentCount)
+            throw new Exception("To few arguments given for function");
+        
+        PushStackFrame();
+        
+        Console.WriteLine($"Executing function: {node.Value}");
+        ExecuteNode(functionNode);
+    }
+
+    private void PushStackFrame()
+    {
         if (_stackFrameBeingBuild != null)
         {
-            var functionDefinition = _functionDefinitions[node.Value] as FunctionDefinitionAstNode;
-            Debug.Assert(functionDefinition != null);
-
-            if (_stackFrameBeingBuild.ArgumentCount > functionDefinition.ArgumentCount)
-                throw new Exception("To many arguments given for function");
-            
-            if (_stackFrameBeingBuild.ArgumentCount < functionDefinition.ArgumentCount)
-                throw new Exception("To few arguments given for function");
-            
             _stack.Push(_stackFrameBeingBuild);
             _stackFrameBeingBuild = null;
             Console.WriteLine("Pushed stackframe");
+            return;
         }
-        else
+
+        // We always need a stackframe, so if there is non just push an empty one
+        _stack.Push(new StackFrame());
+        Console.WriteLine("Pushed empty stackframe");
+    }
+
+    private bool IsBuildInFunction(AstNode node)
+    {
+        return node.Value switch
         {
-            // We always need a stackframe, so if there is non just push an empty one
-            _stack.Push(new StackFrame());
-            Console.WriteLine("Pushed empty stackframe");
+            "Print" => true,
+            var _ => false
+        };
+    }
+
+    private void HandleBuildInFunction(AstNode node)
+    {
+        switch (node.Value)
+        {
+            case "Print":
+                HandlePrint();
+                break;
         }
-        Console.WriteLine($"Executing function: {node.Value}");
-        var functionNode = _functionDefinitions[node.Value];
-        ExecuteNode(functionNode);
+    }
+
+    private void HandlePrint()
+    {
+        var stackFrame = _stack.Peek();
+        if (!stackFrame.HasArguments())
+            throw new Exception("Print must have at least one parameter");
+
+        Console.WriteLine("Calling built in Print function");
+        var count = 0;
+        while (stackFrame.ArgumentCount > 0)
+        {
+            // As there can be an unlimited amount of variables we make them unique by an id
+            var argumentName = $"{count++}";
+            stackFrame.CreateLocalVariable(argumentName, stackFrame.GetArgument());
+        }
+        
+        Console.WriteLine(string.Join(' ', stackFrame.GetAllLocals()));
     }
 }

@@ -7,4 +7,5 @@ fn Second(i, j) {
 }
 
 fn Third(varA, varB) {
+    Print(varA, "This is a quick string in between", varB);
 }
