@@ -1,4 +1,6 @@
 ﻿using System.Diagnostics;
+using System.Net;
+using System.Text;
 using TurtleLang.Models;
 
 namespace TurtleLang.Parser;
@@ -28,10 +30,16 @@ class Parser
             
             var token = CheckToken(_currentString, out var success);
 
+
             if (success)
             {
                 Debug.Assert(token != null);
+                
                 _tokens.Add(token);
+                
+                if (token.TokenType == TokenTypes.LParen)
+                    ParseArgs();
+                
                 _prevToken = token;
                 _currentString = "";
             }
@@ -93,11 +101,85 @@ class Parser
         }
     }
 
+    private void ParseArgs()
+    {
+        if (_prevToken.TokenType == TokenTypes.Call)
+        {
+            // This is for when we try to pass an argument
+            ParseFunctionCallingArgs();
+            return;
+        }
+
+        ParseFunctionDefinitionArgs();
+    }
+
+    private void ParseFunctionCallingArgs()
+    {
+        var sb = new StringBuilder();
+        
+        while (PeekNextChar() != ')')
+        {
+            // TODO: Handle spaces in variable
+            // TODO: Handle trailing comma
+            var nextChar = GetNextChar();
+            
+            // End of var
+            if (nextChar == ',')
+            {
+                _tokens.Add(new Token(TokenTypes.ArgumentValue, sb.ToString().Trim()));
+                sb.Clear();
+                continue;
+            }
+            sb.Append(nextChar);
+        }
+
+        if (sb.Length == 0) 
+            return;
+        
+        var token = new Token(TokenTypes.ArgumentValue, sb.ToString().Trim());
+        _tokens.Add(token);
+    }
+
+    private void ParseFunctionDefinitionArgs()
+    {
+        var sb = new StringBuilder();
+        
+        while (PeekNextChar() != ')')
+        {
+            // TODO: Handle spaces in variable
+            // TODO: Handle trailing comma
+            var nextChar = GetNextChar();
+            
+            // End of var
+            if (nextChar == ',')
+            {
+                _tokens.Add(new Token(TokenTypes.ArgumentIdentifier, sb.ToString().Trim()));
+                sb.Clear();
+                continue;
+            }
+            sb.Append(nextChar);
+        }
+
+        if (sb.Length == 0) 
+            return;
+        
+        var token = new Token(TokenTypes.ArgumentIdentifier, sb.ToString().Trim());
+        _tokens.Add(token);
+    }
+
     private char? PeekNextChar()
     {
         if (_currentIndex + 1 >= _code.Length)
             return null; 
         
         return _code[_currentIndex + 1];
+    }
+
+    private char? GetNextChar()
+    {
+        if (_currentIndex + 1 >= _code.Length)
+            return null; 
+        
+        return _code[++_currentIndex];
     }
 }

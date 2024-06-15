@@ -1,10 +1,10 @@
 ﻿fn Main() {
-    Second();
+    Second(1, 2);
 }
 
-fn Second() {
+fn Second(i, j) {
     Third();
 }
 
-fn Third() {
+fn Third(varA, varB) {
 }

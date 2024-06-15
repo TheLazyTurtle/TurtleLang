@@ -1,6 +1,8 @@
-﻿using TurtleLang.Models;
+﻿using System.Diagnostics;
+using TurtleLang.Models;
 using TurtleLang.Models.Ast;
 using TurtleLang.Models.Exceptions;
+using StackFrame = TurtleLang.Models.StackFrame;
 
 namespace TurtleLang.Lexer;
 
@@ -52,7 +54,7 @@ class Lexer
                     throw new InvalidSyntaxException("Curly braces do not close enough before starting new function decl");
                 
                 Expect(TokenTypes.FunctionIdentifier);
-                astNode = new AstNode(Opcode.FunctionDefinition, _currentToken.Value);
+                astNode = new FunctionDefinitionAstNode(Opcode.FunctionDefinition, _currentToken.Value);
                 _parentNode.AddSibling(astNode);
                 _parentNode = astNode;
                 DefineFunction(astNode);
@@ -60,7 +62,18 @@ class Lexer
             case TokenTypes.Call:
                 astNode = new AstNode(Opcode.Call, _currentToken.Value);
                 Expect(TokenTypes.LParen);
-                Expect(TokenTypes.RParen);
+                
+                // This indirectly becomes an Expect(RParen) and does not need to be checked again
+                while (_currentToken.TokenType != TokenTypes.RParen)
+                {
+                    var next = GetNextToken();
+                    Debug.Assert(next != null);
+
+                    if (next.TokenType == TokenTypes.ArgumentValue)
+                    {
+                        _parentNode.AddChild(new AstNode(Opcode.PushArgument, next.Value));
+                    }
+                }
                 Expect(TokenTypes.Semicolon);
                 _parentNode.AddChild(astNode);
                 break;
@@ -68,14 +81,27 @@ class Lexer
                 Expect(TokenTypes.LParen);
                 break;
             case TokenTypes.LParen:
-                Expect(TokenTypes.RParen);
+                // This indirectly becomes an Expect(RParen) and does not need to be checked again
+                while (_currentToken.TokenType != TokenTypes.RParen)
+                {
+                    var next = GetNextToken();
+                    Debug.Assert(next != null);
+                    if (next.TokenType == TokenTypes.ArgumentIdentifier)
+                    {
+                        if (_parentNode is not FunctionDefinitionAstNode functionDefinition)
+                            throw new Exception();
+                        
+                        _parentNode.AddChild(new AstNode(Opcode.LoadArgument, next.Value));
+                        functionDefinition.AddArgument();
+                    }
+                }
                 break;
             case TokenTypes.RParen:
                 Expect(TokenTypes.LCurly);
                 break;
             case TokenTypes.LCurly:
                 _curlyCount++;
-                // This automatically does becomes an Expect(RCurly) and does not need to be checked again
+                // This indirectly becomes an Expect(RCurly) and does not need to be checked again
                 while (_currentToken.TokenType != TokenTypes.RCurly)
                     Check(GetNextToken());
                 _parentNode.AddSibling(new AstNode(Opcode.Return));
@@ -83,6 +109,7 @@ class Lexer
             case TokenTypes.RCurly:
                 _curlyCount--;
                 break;
+            case TokenTypes.ArgumentIdentifier:
             case TokenTypes.Eof:
                 break;
             default:

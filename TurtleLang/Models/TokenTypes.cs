@@ -5,6 +5,8 @@ public enum TokenTypes
     Global,
     Fn,
     FunctionIdentifier,
+    ArgumentIdentifier,
+    ArgumentValue,
     LParen,
     RParen,
     LCurly,

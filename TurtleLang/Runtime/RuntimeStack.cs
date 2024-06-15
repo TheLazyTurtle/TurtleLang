@@ -1,22 +1,31 @@
-﻿using TurtleLang.Models.Ast;
+﻿using TurtleLang.Models;
+using TurtleLang.Models.Ast;
 using TurtleLang.Models.Exceptions;
 
 namespace TurtleLang.Runtime;
 
 class RuntimeStack
 {
-    private readonly Stack<AstNode> _stack = new();
+    private readonly Stack<StackFrame> _stack = new();
 
-    public void Push(AstNode node)
+    public void Push(StackFrame frame)
     {
-        _stack.Push(node);
+        _stack.Push(frame);
     }
 
-    public AstNode Pop()
+    public StackFrame Pop()
     {
         if (_stack.Count == 0)
             throw new StackEmptyException();
 
         return _stack.Pop();
+    }
+
+    public StackFrame Peek()
+    {
+        if (_stack.Count == 0)
+            throw new StackEmptyException();
+
+        return _stack.Peek();
     }
 }
