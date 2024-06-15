@@ -45,15 +45,13 @@ class Runner
         }
         
         if (node.Child != null)
-        {
             ExecuteNode(node.Child);
-        }
 
-        if (node.Sibling != null)
-        {
-            if (node.Sibling.Opcode != Opcode.FunctionDefinition)
-                ExecuteNode(node.Sibling);
-        }
+        if (node.Sibling == null) 
+            return;
+        
+        if (node.Sibling.Opcode != Opcode.FunctionDefinition)
+            ExecuteNode(node.Sibling);
     }
 
     private void HandleLoadArgument(AstNode node)
@@ -65,7 +63,7 @@ class Runner
         var argumentName = node.Value;
         stackFrame.CreateLocalVariable(argumentName, stackFrame.GetArgument());
         
-        Console.WriteLine($"Method now has access to argument: {argumentName} with value: {stackFrame.GetLocalVariableByName(argumentName)}");
+        InternalLogger.Log($"Method now has access to argument: {argumentName} with value: {stackFrame.GetLocalVariableByName(argumentName)}");
     }
 
     private void HandlePushArgument(AstNode node)
@@ -76,7 +74,7 @@ class Runner
         if (int.TryParse(node.Value, out var number))
         {
             _stackFrameBeingBuild.AddArgument(new RuntimeValue(PrimitiveTypes.Int, number));
-            Console.WriteLine($"Adding int value of: {node.Value} to stackframe");
+            InternalLogger.Log($"Adding int value of: {node.Value} to stackframe");
             return;
         }
 
@@ -87,7 +85,7 @@ class Runner
         {
             _stackFrameBeingBuild.AddArgument(new RuntimeValue(PrimitiveTypes.String, node.Value));
             
-            Console.WriteLine($"Adding string value of: {node.Value} to stackframe");
+            InternalLogger.Log($"Adding string value of: {node.Value} to stackframe");
             return;
         }
 
@@ -98,14 +96,13 @@ class Runner
         
         // We make a new one so we pass by value and not by reference. As these things are not objects they should not be passed as reference
         _stackFrameBeingBuild.AddArgument(new RuntimeValue(localVariable.Type, localVariable.Value));
-        Console.WriteLine($"Passing value by value with value of: {node.Value} to stackframe");
-
+        InternalLogger.Log($"Passing value by value with value of: {node.Value} to stackframe");
     }
 
     private void HandleReturn(AstNode node)
     {
         var _ = _stack.Pop();
-        Console.WriteLine("Popped stackframe");
+        InternalLogger.Log("Popped stackframe");
         // Here we should also do something with the return value once we have implemented that
     }
 
@@ -129,7 +126,7 @@ class Runner
         
         PushStackFrame();
         
-        Console.WriteLine($"Executing function: {node.Value}");
+        InternalLogger.Log($"Executing function: {node.Value}");
         ExecuteNode(functionNode);
     }
 
@@ -139,13 +136,13 @@ class Runner
         {
             _stack.Push(_stackFrameBeingBuild);
             _stackFrameBeingBuild = null;
-            Console.WriteLine("Pushed stackframe");
+            InternalLogger.Log("Pushed stackframe");
             return;
         }
 
         // We always need a stackframe, so if there is non just push an empty one
         _stack.Push(new StackFrame());
-        Console.WriteLine("Pushed empty stackframe");
+        InternalLogger.Log("Pushed empty stackframe");
     }
 
     private bool IsBuildInFunction(AstNode node)
@@ -173,7 +170,7 @@ class Runner
         if (!stackFrame.HasArguments())
             throw new Exception("Print must have at least one parameter");
 
-        Console.WriteLine("Calling built in Print function");
+        InternalLogger.Log("Calling built in Print function");
         var count = 0;
         while (stackFrame.ArgumentCount > 0)
         {

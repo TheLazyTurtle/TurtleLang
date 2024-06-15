@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics;
-using System.Net;
 using System.Text;
 using TurtleLang.Models;
 
@@ -29,7 +28,6 @@ class Parser
             _currentString = $"{_currentString}{currentChar}";
             
             var token = CheckToken(_currentString, out var success);
-
 
             if (success)
             {

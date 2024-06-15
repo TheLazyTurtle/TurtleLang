@@ -2,7 +2,6 @@
 using TurtleLang.Models;
 using TurtleLang.Models.Ast;
 using TurtleLang.Models.Exceptions;
-using StackFrame = TurtleLang.Models.StackFrame;
 
 namespace TurtleLang.Lexer;
 
@@ -119,24 +118,20 @@ class Lexer
     
     private Token? PeekNextToken()
     {
-        if (_currentIndex + 1 < _tokens.Count)
-        {
-            _currentToken = _tokens[_currentIndex + 1];
-            return _currentToken;
-        }
-
-        return null;
+        if (_currentIndex + 1 >= _tokens.Count) 
+            return null;
+        
+        _currentToken = _tokens[_currentIndex + 1];
+        return _currentToken;
     }
     
     private Token? GetNextToken()
     {
-        if (_currentIndex + 1 < _tokens.Count)
-        {
-            _currentToken = _tokens[++_currentIndex];
-            return _currentToken;
-        }
-
-        return null;
+        if (_currentIndex + 1 >= _tokens.Count) 
+            return null;
+        
+        _currentToken = _tokens[++_currentIndex];
+        return _currentToken;
     }
 
     private void Expect(TokenTypes expected)
@@ -151,6 +146,7 @@ class Lexer
 
     private void DefineFunction(AstNode node)
     {
+        // TODO: Make sure that we cannot redefine a builtin function
         if (FunctionNodesByName.ContainsKey(node.Value))
             throw new RedefinitionException(node.Value);
         
