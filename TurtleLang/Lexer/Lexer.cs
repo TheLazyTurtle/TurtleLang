@@ -18,7 +18,7 @@ class Lexer
 
     public AstTree Lex(List<Token> tokens)
     {
-        _parentNode = new AstNode(Opcode.Call, "Main");
+        _parentNode = new AstNode(Opcode.Call, "Main", 0);
         _ast.SetRoot(_parentNode);
         
         _tokens = tokens;
@@ -35,7 +35,7 @@ class Lexer
         
         // Validate that there is a main function
         if (!FunctionNodesByName.ContainsKey("Main"))
-            throw new Exception("No main function defined");
+            InterpreterErrorLogger.LogError("No main function defined");
 
         return _ast;
     }
@@ -50,16 +50,16 @@ class Lexer
         {
             case TokenTypes.Fn:
                 if (_curlyCount != 0)
-                    throw new InvalidSyntaxException("Curly braces do not close enough before starting new function decl");
+                    InterpreterErrorLogger.LogError("Curly braces do not close enough before starting new function decl", _currentToken);
                 
                 Expect(TokenTypes.FunctionIdentifier);
-                astNode = new FunctionDefinitionAstNode(Opcode.FunctionDefinition, _currentToken.Value);
+                astNode = new FunctionDefinitionAstNode(Opcode.FunctionDefinition, _currentToken.Value, _currentToken.LineNumber);
                 _parentNode.AddSibling(astNode);
                 _parentNode = astNode;
                 DefineFunction(astNode);
                 break;
             case TokenTypes.Call:
-                astNode = new AstNode(Opcode.Call, _currentToken.Value);
+                astNode = new AstNode(Opcode.Call, _currentToken.Value, _currentToken.LineNumber);
                 Expect(TokenTypes.LParen);
                 
                 // This indirectly becomes an Expect(RParen) and does not need to be checked again
@@ -70,7 +70,7 @@ class Lexer
 
                     if (next.TokenType == TokenTypes.ArgumentValue)
                     {
-                        _parentNode.AddChild(new AstNode(Opcode.PushArgument, next.Value));
+                        _parentNode.AddChild(new AstNode(Opcode.PushArgument, next.Value, _currentToken.LineNumber));
                     }
                 }
                 Expect(TokenTypes.Semicolon);
@@ -85,14 +85,14 @@ class Lexer
                 {
                     var next = GetNextToken();
                     Debug.Assert(next != null);
-                    if (next.TokenType == TokenTypes.ArgumentIdentifier)
-                    {
-                        if (_parentNode is not FunctionDefinitionAstNode functionDefinition)
-                            throw new Exception();
+                    if (next.TokenType != TokenTypes.ArgumentIdentifier) 
+                        continue;
+                    
+                    if (_parentNode is not FunctionDefinitionAstNode functionDefinition)
+                        throw new Exception();
                         
-                        _parentNode.AddChild(new AstNode(Opcode.LoadArgument, next.Value));
-                        functionDefinition.AddArgument();
-                    }
+                    _parentNode.AddChild(new AstNode(Opcode.LoadArgument, next.Value, _currentToken.LineNumber));
+                    functionDefinition.AddArgument();
                 }
                 break;
             case TokenTypes.RParen:
@@ -103,7 +103,7 @@ class Lexer
                 // This indirectly becomes an Expect(RCurly) and does not need to be checked again
                 while (_currentToken.TokenType != TokenTypes.RCurly)
                     Check(GetNextToken());
-                _parentNode.AddSibling(new AstNode(Opcode.Return));
+                _parentNode.AddSibling(new AstNode(Opcode.Return, _currentToken.LineNumber));
                 break;
             case TokenTypes.RCurly:
                 _curlyCount--;
@@ -141,14 +141,14 @@ class Lexer
             throw new UnexpectedTokenException("Token was null");
         
         if (next.TokenType != expected)
-            throw new UnexpectedTokenException($"Expected: {expected.ToString()} got {next}");
+            InterpreterErrorLogger.LogError($"Expected: {expected.ToString()} got {next}", _currentToken);
     }
 
     private void DefineFunction(AstNode node)
     {
         // TODO: Make sure that we cannot redefine a builtin function
         if (FunctionNodesByName.ContainsKey(node.Value))
-            throw new RedefinitionException(node.Value);
+            InterpreterErrorLogger.LogError($"Redefinition of function with name: {node.Value}", _currentToken);
         
         FunctionNodesByName.Add(node.Value, node);
     }

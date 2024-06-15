@@ -92,7 +92,7 @@ class Runner
         // The current functions stackframe contains a local with this name so we can use this value.
         var localVariable = currentFunctionStackFrame.GetLocalVariableByName(node.Value);
         if (localVariable == null) 
-            throw new VariableDoesNotExistException(node.Value);
+            InterpreterErrorLogger.LogError($"Variable {node.Value} does not exist", node);
         
         // We make a new one so we pass by value and not by reference. As these things are not objects they should not be passed as reference
         _stackFrameBeingBuild.AddArgument(new RuntimeValue(localVariable.Type, localVariable.Value));
@@ -119,10 +119,10 @@ class Runner
         Debug.Assert(functionNode != null);
         
         if (_stackFrameBeingBuild?.ArgumentCount > functionNode.ArgumentCount)
-            throw new Exception("To many arguments given for function");
+            InterpreterErrorLogger.LogError("To many arguments given for function", node);
         
         if (_stackFrameBeingBuild?.ArgumentCount < functionNode.ArgumentCount)
-            throw new Exception("To few arguments given for function");
+            InterpreterErrorLogger.LogError("To few arguments given for function", node);
         
         PushStackFrame();
         
@@ -159,16 +159,16 @@ class Runner
         switch (node.Value)
         {
             case "Print":
-                HandlePrint();
+                HandlePrint(node);
                 break;
         }
     }
 
-    private void HandlePrint()
+    private void HandlePrint(AstNode node)
     {
         var stackFrame = _stack.Peek();
         if (!stackFrame.HasArguments())
-            throw new Exception("Print must have at least one parameter");
+            InterpreterErrorLogger.LogError("Print must have at least one parameter", node);
 
         InternalLogger.Log("Calling built in Print function");
         var count = 0;

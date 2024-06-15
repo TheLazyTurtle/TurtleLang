@@ -3,11 +3,11 @@
 class FunctionDefinitionAstNode: AstNode
 {
     public int ArgumentCount { get; private set; }
-    public FunctionDefinitionAstNode(Opcode opcode) : base(opcode)
+    public FunctionDefinitionAstNode(Opcode opcode, int lineNumber) : base(opcode, lineNumber)
     {
     }
 
-    public FunctionDefinitionAstNode(Opcode opcode, string value) : base(opcode, value)
+    public FunctionDefinitionAstNode(Opcode opcode, string value, int lineNumber) : base(opcode, value, lineNumber)
     {
     }
 

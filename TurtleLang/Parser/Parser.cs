@@ -9,6 +9,7 @@ class Parser
     private string _code;
     private int _currentIndex;
     private string _currentString;
+    private int _currentLineNumber = 1; // 1 because a code file starts at line 1 not 0
     private Token _prevToken;
     private readonly List<Token> _tokens = new();
     
@@ -21,6 +22,9 @@ class Parser
             var currentChar = _code[_currentIndex];
             if (currentChar is ' ' or '\n' or '\r' or '\t')
             {
+                if (currentChar is '\n')
+                    _currentLineNumber++;
+                
                 _currentIndex++;
                 continue;
             }
@@ -46,28 +50,21 @@ class Parser
             
             if (nextChar == null)
             {
-                _tokens.Add(new Token(TokenTypes.Eof));
+                _tokens.Add(new Token(TokenTypes.Eof, _currentLineNumber));
                 break;
             }
             
             if (nextChar == '(')
             {
+                Token functionToken;
+                // Defining a function or calling a function
                 if (_prevToken.TokenType == TokenTypes.Fn)
-                {
-                    // Defining a function
-                    var identifierToken = new Token(TokenTypes.FunctionIdentifier, _currentString);
-                    _tokens.Add(identifierToken);
-                    _prevToken = identifierToken;
-                    _currentString = "";
-                }
+                    functionToken = new Token(TokenTypes.FunctionIdentifier, _currentString, _currentLineNumber);
                 else
-                {
-                    // Calling a function
-                    var callingToken = new Token(TokenTypes.Call, _currentString);
-                    _tokens.Add(callingToken);
-                    _prevToken = callingToken;
-                    _currentString = "";
-                }
+                    functionToken = new Token(TokenTypes.Call, _currentString, _currentLineNumber);
+                _tokens.Add(functionToken);
+                _prevToken = functionToken;
+                _currentString = "";
             }
             _currentIndex++;
         }
@@ -82,17 +79,17 @@ class Parser
         switch (token)
         {
             case "fn":
-                return new Token(TokenTypes.Fn);
+                return new Token(TokenTypes.Fn, _currentLineNumber);
             case "(":
-                return new Token(TokenTypes.LParen);
+                return new Token(TokenTypes.LParen, _currentLineNumber);
             case ")":
-                return new Token(TokenTypes.RParen);
+                return new Token(TokenTypes.RParen, _currentLineNumber);
             case "{":
-                return new Token(TokenTypes.LCurly);
+                return new Token(TokenTypes.LCurly, _currentLineNumber);
             case "}":
-                return new Token(TokenTypes.RCurly);
+                return new Token(TokenTypes.RCurly, _currentLineNumber);
             case ";":
-                return new Token(TokenTypes.Semicolon);
+                return new Token(TokenTypes.Semicolon, _currentLineNumber);
             default:
                 success = false;
                 return null;
@@ -113,15 +110,15 @@ class Parser
                 isStaticString = !isStaticString;
 
             if (nextChar == ',' &&  PeekNextCharSkipAllWhiteSpaces() == ')')
-                throw new Exception("Trailing comma is not allowed");
+                InterpreterErrorLogger.LogError("Trailing comma is not allowed", _prevToken);
 
             if (!isStaticString && nextChar == ' ' && PeekNextChar() != ',')
-                throw new Exception("Variables are not allowed to have spaces");
+                InterpreterErrorLogger.LogError("Variables are not allowed to have spaces", _prevToken);
             
             // End of var
             if (nextChar == ',')
             {
-                _tokens.Add(new Token(tokenType, sb.ToString().Trim()));
+                _tokens.Add(new Token(tokenType, sb.ToString().Trim(), _currentLineNumber));
                 sb.Clear();
 
                 // Skip whitespace after comma if it is there
@@ -136,7 +133,7 @@ class Parser
         if (sb.Length == 0) 
             return;
         
-        var token = new Token(tokenType, sb.ToString().Trim());
+        var token = new Token(tokenType, sb.ToString().Trim(), _currentLineNumber);
         _tokens.Add(token);
     }
 

@@ -6,19 +6,22 @@ class AstNode
 {
     public AstNode? Child { get; private set; }
     public AstNode? Sibling { get; private set; }
-    public Opcode Opcode { get; init; }
-    public string Value { get; init; }
+    public Opcode Opcode { get; }
+    public string Value { get; }
+    public int LineNumber { get; }
 
-    public AstNode(Opcode opcode)
+    public AstNode(Opcode opcode, int lineNumber)
     {
         Opcode = opcode;
         Value = "";
+        LineNumber = lineNumber;
     }
     
-    public AstNode(Opcode opcode, string value)
+    public AstNode(Opcode opcode, string value, int lineNumber)
     {
         Opcode = opcode;
         Value = value;
+        LineNumber = lineNumber;
     }
 
     public void AddChild(AstNode node)
