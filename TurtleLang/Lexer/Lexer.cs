@@ -8,9 +8,10 @@ class Lexer
 {
     private readonly AstTree _ast = new();
     private List<Token> _tokens;
-    private int _currentIndex;
     private AstNode _parentNode;
     private Token _currentToken;
+    private int _currentIndex;
+    private int _curlyCount;
     
     public Dictionary<string, AstNode> FunctionNodesByName { get; } = new();
 
@@ -47,6 +48,9 @@ class Lexer
         switch (token.TokenType)
         {
             case TokenTypes.Fn:
+                if (_curlyCount != 0)
+                    throw new InvalidSyntaxException("Curly braces do not close enough before starting new function decl");
+                
                 Expect(TokenTypes.FunctionIdentifier);
                 astNode = new AstNode(Opcode.FunctionDefinition, _currentToken.Value);
                 _parentNode.AddSibling(astNode);
@@ -70,20 +74,15 @@ class Lexer
                 Expect(TokenTypes.LCurly);
                 break;
             case TokenTypes.LCurly:
+                _curlyCount++;
+                // This automatically does becomes an Expect(RCurly) and does not need to be checked again
                 while (_currentToken.TokenType != TokenTypes.RCurly)
-                {
                     Check(GetNextToken());
-                }
-                // // Empty statement
-                // if (peekNext!.TokenType == TokenTypes.RCurly)
-                // {
-                //     Expect(TokenTypes.RCurly);
-                //     break;
-                // }
-                
-                // Expect(TokenTypes.RCurly);
+                _parentNode.AddSibling(new AstNode(Opcode.Return));
                 break;
             case TokenTypes.RCurly:
+                _curlyCount--;
+                break;
             case TokenTypes.Eof:
                 break;
             default:

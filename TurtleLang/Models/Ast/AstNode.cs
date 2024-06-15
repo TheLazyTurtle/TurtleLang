@@ -52,10 +52,28 @@ class AstNode
             sb.Append($": {Value}");
 
         if (Child != null)
-            sb.Append($"\n\t Child: -> {Child}");
+            sb.Append($"\n\t Child: -> {Child.ToString(0)}");
 
         if (Sibling != null)
-            sb.Append($"\n| Sibling: {Sibling}");
+            sb.Append($"\n| Sibling: {Sibling.ToString(0)}");
+
+        return sb.ToString();
+    }
+
+    private string ToString(int depth)
+    {
+        var sb = new StringBuilder();
+
+        sb.Append(Opcode.ToString());
+        if (!string.IsNullOrEmpty(Value))
+            sb.Append($": {Value}");
+
+        depth++;
+        if (Child != null)
+            sb.Append($"\n\t Child: -> {Child.ToString(depth)}");
+
+        if (Sibling != null)
+            sb.Append($"\n| Sibling: {Sibling.ToString(depth)}");
 
         return sb.ToString();
     }

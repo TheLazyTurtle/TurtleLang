@@ -6,7 +6,7 @@ namespace TurtleLang.Runtime;
 
 class Runner
 {
-    private readonly RuntimeStack _stack;
+    private readonly RuntimeStack _stack = new();
     private Dictionary<string, AstNode> _functionDefinitions;
     private AstNode _currentNode;
     
@@ -30,6 +30,9 @@ class Runner
             case Opcode.Call:
                 HandleCall(node);
                 break;
+            case Opcode.Return:
+                HandleReturn(node);
+                break;
         }
         
         if (node.Child != null)
@@ -44,10 +47,16 @@ class Runner
         }
     }
 
+    private void HandleReturn(AstNode node)
+    {
+        _stack.Pop();
+    }
+
     private void HandleCall(AstNode node)
     {
         var functionNode = _functionDefinitions[node.Value];
         Console.WriteLine($"Executing function: {node.Value}");
+        _stack.Push(node);
         ExecuteNode(functionNode);
     }
 }

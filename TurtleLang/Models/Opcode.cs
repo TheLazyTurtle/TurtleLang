@@ -4,5 +4,6 @@ enum Opcode
 {
     FunctionDefinition,
     Call,
+    Return,
     Eof
 }
