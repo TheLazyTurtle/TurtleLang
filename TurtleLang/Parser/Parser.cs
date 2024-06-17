@@ -1,169 +1,155 @@
 ﻿using System.Diagnostics;
-using System.Text;
 using TurtleLang.Models;
+using TurtleLang.Models.Ast;
+using TurtleLang.Models.Exceptions;
 
 namespace TurtleLang.Parser;
 
 class Parser
 {
-    private string _code;
+    private readonly AstTree _ast = new();
+    private List<Token> _tokens;
+    private AstNode _parentNode;
+    private Token _currentToken;
     private int _currentIndex;
-    private string _currentString;
-    private int _currentLineNumber = 1; // 1 because a code file starts at line 1 not 0
-    private Token _prevToken;
-    private readonly List<Token> _tokens = new();
+    private int _curlyCount;
     
-    public List<Token> Parse(string filePath)
+    public Dictionary<string, AstNode> FunctionNodesByName { get; } = new();
+
+    public AstTree Parse(List<Token> tokens)
     {
-        _code = File.ReadAllText(filePath);
+        _parentNode = new AstNode(Opcode.Call, "Main", 0);
+        _ast.SetRoot(_parentNode);
+        
+        _tokens = tokens;
 
-        while (_currentIndex < _code.Length)
+        var token = _tokens[_currentIndex];
+        while (_currentIndex < _tokens.Count)
         {
-            var currentChar = _code[_currentIndex];
-            if (currentChar is ' ' or '\n' or '\r' or '\t')
-            {
-                if (currentChar is '\n')
-                    _currentLineNumber++;
-                
-                _currentIndex++;
-                continue;
-            }
-            
-            _currentString = $"{_currentString}{currentChar}";
-            
-            var token = CheckToken(_currentString, out var success);
+            Check(token);
+            token = GetNextToken();
 
-            if (success)
-            {
-                Debug.Assert(token != null);
-                
-                _tokens.Add(token);
-                
-                if (token.TokenType == TokenTypes.LParen)
-                    ParseArgs();
-                
-                _prevToken = token;
-                _currentString = "";
-            }
-
-            var nextChar = PeekNextChar();
-            
-            if (nextChar == null)
-            {
-                _tokens.Add(new Token(TokenTypes.Eof, _currentLineNumber));
+            if (token == null)
                 break;
-            }
-            
-            if (nextChar == '(')
-            {
-                Token functionToken;
-                // Defining a function or calling a function
-                if (_prevToken.TokenType == TokenTypes.Fn)
-                    functionToken = new Token(TokenTypes.FunctionIdentifier, _currentString, _currentLineNumber);
-                else
-                    functionToken = new Token(TokenTypes.Call, _currentString, _currentLineNumber);
-                _tokens.Add(functionToken);
-                _prevToken = functionToken;
-                _currentString = "";
-            }
-            _currentIndex++;
         }
         
+        // Validate that there is a main function
+        if (!FunctionNodesByName.ContainsKey("Main"))
+            InterpreterErrorLogger.LogError("No main function defined");
 
-        return _tokens;
+        return _ast;
     }
 
-    private Token? CheckToken(string token, out bool success)
+    private void Check(Token? token)
     {
-        success = true;
-        switch (token)
-        {
-            case "fn":
-                return new Token(TokenTypes.Fn, _currentLineNumber);
-            case "(":
-                return new Token(TokenTypes.LParen, _currentLineNumber);
-            case ")":
-                return new Token(TokenTypes.RParen, _currentLineNumber);
-            case "{":
-                return new Token(TokenTypes.LCurly, _currentLineNumber);
-            case "}":
-                return new Token(TokenTypes.RCurly, _currentLineNumber);
-            case ";":
-                return new Token(TokenTypes.Semicolon, _currentLineNumber);
-            default:
-                success = false;
-                return null;
-        }
-    }
-
-    private void ParseArgs()
-    {
-        var isStaticString = false;
-        var tokenType = _prevToken.TokenType == TokenTypes.Call ? TokenTypes.ArgumentValue : TokenTypes.ArgumentIdentifier;
-        
-        var sb = new StringBuilder();
-        
-        while (PeekNextChar() != ')')
-        {
-            var nextChar = GetNextChar();
-            if (nextChar == '\"')
-                isStaticString = !isStaticString;
-
-            if (nextChar == ',' &&  PeekNextCharSkipAllWhiteSpaces() == ')')
-                InterpreterErrorLogger.LogError("Trailing comma is not allowed", _prevToken);
-
-            if (!isStaticString && nextChar == ' ' && PeekNextChar() != ',')
-                InterpreterErrorLogger.LogError("Variables are not allowed to have spaces", _prevToken);
-            
-            // End of var
-            if (nextChar == ',')
-            {
-                _tokens.Add(new Token(tokenType, sb.ToString().Trim(), _currentLineNumber));
-                sb.Clear();
-
-                // Skip whitespace after comma if it is there
-                if (PeekNextChar() == ' ')
-                    GetNextChar();
-                
-                continue;
-            }
-            sb.Append(nextChar);
-        }
-
-        if (sb.Length == 0) 
+        if (token == null)
             return;
         
-        var token = new Token(tokenType, sb.ToString().Trim(), _currentLineNumber);
-        _tokens.Add(token);
-    }
+        AstNode astNode;
+        switch (token.TokenType)
+        {
+            case TokenTypes.Fn:
+                if (_curlyCount != 0)
+                    InterpreterErrorLogger.LogError("Curly braces do not close enough before starting new function decl", _currentToken);
+                
+                Expect(TokenTypes.FunctionIdentifier);
+                astNode = new FunctionDefinitionAstNode(Opcode.FunctionDefinition, _currentToken.Value, _currentToken.LineNumber);
+                _parentNode.AddSibling(astNode);
+                _parentNode = astNode;
+                DefineFunction(astNode);
+                break;
+            case TokenTypes.Call:
+                astNode = new AstNode(Opcode.Call, _currentToken.Value, _currentToken.LineNumber);
+                Expect(TokenTypes.LParen);
+                
+                // This indirectly becomes an Expect(RParen) and does not need to be checked again
+                while (_currentToken.TokenType != TokenTypes.RParen)
+                {
+                    var next = GetNextToken();
+                    Debug.Assert(next != null);
 
-    private char? PeekNextChar()
-    {
-        if (_currentIndex + 1 >= _code.Length)
-            return null; 
-        
-        return _code[_currentIndex + 1];
+                    if (next.TokenType == TokenTypes.ArgumentValue)
+                    {
+                        _parentNode.AddChild(new AstNode(Opcode.PushArgument, next.Value, _currentToken.LineNumber));
+                    }
+                }
+                Expect(TokenTypes.Semicolon);
+                _parentNode.AddChild(astNode);
+                break;
+            case TokenTypes.FunctionIdentifier:
+                Expect(TokenTypes.LParen);
+                break;
+            case TokenTypes.LParen:
+                // This indirectly becomes an Expect(RParen) and does not need to be checked again
+                while (_currentToken.TokenType != TokenTypes.RParen)
+                {
+                    var next = GetNextToken();
+                    Debug.Assert(next != null);
+                    if (next.TokenType != TokenTypes.ArgumentIdentifier) 
+                        continue;
+                    
+                    if (_parentNode is not FunctionDefinitionAstNode functionDefinition)
+                        throw new Exception();
+                        
+                    _parentNode.AddChild(new AstNode(Opcode.LoadArgument, next.Value, _currentToken.LineNumber));
+                    functionDefinition.AddArgument();
+                }
+                break;
+            case TokenTypes.RParen:
+                Expect(TokenTypes.LCurly);
+                break;
+            case TokenTypes.LCurly:
+                _curlyCount++;
+                // This indirectly becomes an Expect(RCurly) and does not need to be checked again
+                while (_currentToken.TokenType != TokenTypes.RCurly)
+                    Check(GetNextToken());
+                _parentNode.AddSibling(new AstNode(Opcode.Return, _currentToken.LineNumber));
+                break;
+            case TokenTypes.RCurly:
+                _curlyCount--;
+                break;
+            case TokenTypes.ArgumentIdentifier:
+            case TokenTypes.Eof:
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
     }
     
-    private char? PeekNextCharSkipAllWhiteSpaces()
+    private Token? PeekNextToken()
     {
-        if (_currentIndex + 1 >= _code.Length)
+        if (_currentIndex + 1 >= _tokens.Count) 
             return null;
-
-        var index = 1;
-        var curChar = _code[_currentIndex + index];
-        while (curChar == ' ')
-        {
-            curChar = _code[_currentIndex + ++index];
-        }
-        return _code[_currentIndex + index];
+        
+        _currentToken = _tokens[_currentIndex + 1];
+        return _currentToken;
+    }
+    
+    private Token? GetNextToken()
+    {
+        if (_currentIndex + 1 >= _tokens.Count) 
+            return null;
+        
+        _currentToken = _tokens[++_currentIndex];
+        return _currentToken;
     }
 
-    private char? GetNextChar()
+    private void Expect(TokenTypes expected)
     {
-        if (_currentIndex + 1 >= _code.Length)
-            return null; 
+        var next = GetNextToken();
+        if (next == null)
+            throw new UnexpectedTokenException("Token was null");
         
-        return _code[++_currentIndex];
+        if (next.TokenType != expected)
+            InterpreterErrorLogger.LogError($"Expected: {expected.ToString()} got {next}", _currentToken);
+    }
+
+    private void DefineFunction(AstNode node)
+    {
+        // TODO: Make sure that we cannot redefine a builtin function
+        if (FunctionNodesByName.ContainsKey(node.Value))
+            InterpreterErrorLogger.LogError($"Redefinition of function with name: {node.Value}", _currentToken);
+        
+        FunctionNodesByName.Add(node.Value, node);
     }
 }

@@ -10,18 +10,19 @@ abstract class Program
     
     static void Main(string[] args)
     {
+        var code = File.ReadAllText("Examples/Main.tl");
         InternalLogger.IsLoggingEnabled = false;
-        var tokens = Parser.Parse("Examples/Main.tl");
+        var tokens = Lexer.Lex(code);
 
         InternalLogger.Log("=============== Parser ===============");
         foreach (var token in tokens)
             InternalLogger.Log(token);
         
         InternalLogger.Log("================ Lexer ================");
-        var ast = Lexer.Lex(tokens);
+        var ast = Parser.Parse(tokens);
         InternalLogger.Log(ast);
         
         InternalLogger.Log("=============== Runner ===============");
-        Runner.Run(ast, Lexer.FunctionNodesByName);
+        Runner.Run(ast, Parser.FunctionNodesByName);
     }
 }
