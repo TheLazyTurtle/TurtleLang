@@ -1,26 +1,25 @@
 ﻿using System.Diagnostics;
 using TurtleLang.Models;
 using TurtleLang.Models.Ast;
-using TurtleLang.Models.Exceptions;
 using StackFrame = TurtleLang.Models.StackFrame;
 
 namespace TurtleLang.Runtime;
 
 class Runner
 {
-    private readonly RuntimeStack _stack = new();
-    private Dictionary<string, AstNode> _functionDefinitions;
-    private AstNode _currentNode;
-    private StackFrame? _stackFrameBeingBuild;
+    private readonly Stack<StackFrame> _stack = new();
+    private Dictionary<string, AstNode?> _functionDefinitions;
     
-    public void Run(AstTree ast, Dictionary<string, AstNode> functionDefinitions)
+    public void Run(AstTree ast, Dictionary<string, AstNode?> functionDefinitions)
     {
         _functionDefinitions = functionDefinitions;
-        // var root = ast.Root;
-        // Debug.Assert(root is { Opcode: Opcode.Call });
-        // _currentNode = root;
+
+        var callMain = ast.Children.FirstOrDefault();
+        Debug.Assert(callMain != null);
+        Debug.Assert(callMain.Value == "Main");
+        ExecuteNode(callMain);
         
-        ExecuteNode(_currentNode);
+        Debug.Assert(_stack.Count == 0);
     }
 
     private void ExecuteNode(AstNode node)
@@ -32,7 +31,7 @@ class Runner
         {
             case Opcode.Call:
                 HandleCall(node);
-                break;
+                return; // After a call it should not do anything
             case Opcode.Return:
                 HandleReturn(node);
                 break;
@@ -40,8 +39,12 @@ class Runner
                 HandleLoadArgument(node);
                 break;
             case Opcode.PushArgument:
-                HandlePushArgument(node);
-                break;
+                throw new Exception("Pushing arguments is only allowed in a call");
+        }
+
+        foreach (var child in node.Children)
+        {
+            ExecuteNode(child);
         }
         
         // if (node.Children != null)
@@ -66,28 +69,27 @@ class Runner
         InternalLogger.Log($"Method now has access to argument: {argumentName} with value: {stackFrame.GetLocalVariableByName(argumentName)}");
     }
 
-    private void HandlePushArgument(AstNode node)
+    private void HandlePushArgument(StackFrame stackFrame, AstNode node)
     {
-        _stackFrameBeingBuild ??= new StackFrame();
-        
         // It is an int it can never be an variable
         if (int.TryParse(node.Value, out var number))
         {
-            _stackFrameBeingBuild.AddArgument(new RuntimeValue(PrimitiveTypes.Int, number));
+            stackFrame.AddArgument(new RuntimeValue(PrimitiveTypes.Int, number));
             InternalLogger.Log($"Adding int value of: {node.Value} to stackframe");
             return;
         }
 
-        var currentFunctionStackFrame = _stack.Peek();
-        
         // Handle string as input
-        if (node.Value.StartsWith("\"") && node.Value.EndsWith("\"")) 
+        if (node is ArgumentAstNode argNode)
         {
-            _stackFrameBeingBuild.AddArgument(new RuntimeValue(PrimitiveTypes.String, node.Value));
+            stackFrame.AddArgument(new RuntimeValue(PrimitiveTypes.String, argNode.Value));
             
-            InternalLogger.Log($"Adding string value of: {node.Value} to stackframe");
+            InternalLogger.Log($"Adding string value of: {argNode.Value} to stackframe");
             return;
         }
+        
+        // Handle passing a variable
+        var currentFunctionStackFrame = _stack.Peek();
 
         // The current functions stackframe contains a local with this name so we can use this value.
         var localVariable = currentFunctionStackFrame.GetLocalVariableByName(node.Value);
@@ -95,7 +97,7 @@ class Runner
             InterpreterErrorLogger.LogError($"Variable {node.Value} does not exist", node);
         
         // We make a new one so we pass by value and not by reference. As these things are not objects they should not be passed as reference
-        _stackFrameBeingBuild.AddArgument(new RuntimeValue(localVariable.Type, localVariable.Value));
+        stackFrame.AddArgument(new RuntimeValue(localVariable.Type, localVariable.Value));
         InternalLogger.Log($"Passing value by value with value of: {node.Value} to stackframe");
     }
 
@@ -106,36 +108,51 @@ class Runner
         // Here we should also do something with the return value once we have implemented that
     }
 
+    private void LoadAllArguments(AstNode node, StackFrame stackFrame)
+    {
+        foreach (var child in node.Children)
+        {
+            if (child.Opcode != Opcode.PushArgument)
+            {
+                InternalLogger.Log($"Did not expect children of call to be anything else than PushArgument. Got {child.Opcode}");
+                continue;
+            }
+            HandlePushArgument(stackFrame, child);
+        }
+    }
+
     private void HandleCall(AstNode node)
     {
+        var stackFrame = new StackFrame();
+        
+        LoadAllArguments(node, stackFrame);
         if (IsBuildInFunction(node))
         {
-            PushStackFrame();
+            PushStackFrame(stackFrame);
             HandleBuildInFunction(node);
             return;
         }
-        
+
         var functionNode = _functionDefinitions[node.Value] as FunctionDefinitionAstNode;
         Debug.Assert(functionNode != null);
         
-        if (_stackFrameBeingBuild?.ArgumentCount > functionNode.ArgumentCount)
+        if (stackFrame.ArgumentCount > functionNode.ArgumentCount)
             InterpreterErrorLogger.LogError("To many arguments given for function", node);
         
-        if (_stackFrameBeingBuild?.ArgumentCount < functionNode.ArgumentCount)
+        if (stackFrame.ArgumentCount < functionNode.ArgumentCount)
             InterpreterErrorLogger.LogError("To few arguments given for function", node);
         
-        PushStackFrame();
+        PushStackFrame(stackFrame);
         
         InternalLogger.Log($"Executing function: {node.Value}");
         ExecuteNode(functionNode);
     }
 
-    private void PushStackFrame()
+    private void PushStackFrame(StackFrame stackFrame)
     {
-        if (_stackFrameBeingBuild != null)
+        if (stackFrame.ArgumentCount != 0)
         {
-            _stack.Push(_stackFrameBeingBuild);
-            _stackFrameBeingBuild = null;
+            _stack.Push(stackFrame);
             InternalLogger.Log("Pushed stackframe");
             return;
         }
@@ -166,11 +183,13 @@ class Runner
 
     private void HandlePrint(AstNode node)
     {
-        var stackFrame = _stack.Peek();
+        InternalLogger.Log("Calling built in Print function");
+        
+        var stackFrame = _stack.Pop();
+        
         if (!stackFrame.HasArguments())
             InterpreterErrorLogger.LogError("Print must have at least one parameter", node);
 
-        InternalLogger.Log("Calling built in Print function");
         var count = 0;
         while (stackFrame.ArgumentCount > 0)
         {

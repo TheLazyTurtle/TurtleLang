@@ -15,22 +15,19 @@ abstract class Program
         InternalLogger.IsLoggingEnabled = true;
         var tokens = Lexer.Lex(code);
 
-        // InternalLogger.Log("================ Lexer ================");
-        // foreach (var token in tokens)
-        //     InternalLogger.Log(token);
+        InternalLogger.Log("================ Lexer ================");
+        foreach (var token in tokens)
+            InternalLogger.Log(token);
         
         InternalLogger.Log("=============== Parser ===============");
         _parser = new Parser.Parser(tokens);
         var ast = _parser.Parse();
 
         InternalLogger.Log(ast.ToString());
-        // foreach (var node in _parser.FunctionNodesByName)
-        // {
-        //     var funcDef = (FunctionDefinitionAstNode)node.Value!;
-        //     InternalLogger.Log(funcDef);
-        // }
+        
+        // TODO: Place a function here that validates that all called functions actually exist
 
-        // InternalLogger.Log("=============== Runner ===============");
-        // Runner.Run(ast, Parser.FunctionNodesByName);
+        InternalLogger.Log("=============== Runner ===============");
+        Runner.Run(ast, _parser.FunctionNodesByName);
     }
 }

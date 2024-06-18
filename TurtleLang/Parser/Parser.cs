@@ -1,5 +1,6 @@
 ﻿using TurtleLang.Models;
 using TurtleLang.Models.Ast;
+using TurtleLang.Models.BuildIn.Types;
 using TurtleLang.Models.Exceptions;
 
 namespace TurtleLang.Parser;
@@ -120,6 +121,7 @@ class Parser
             if (_currentToken.TokenType == TokenTypes.Identifier)
             {
                 funcDef.AddArgument(_currentToken.Value);
+                funcDef.AddChild(new AstNode(Opcode.LoadArgument, _currentToken));
                 ExpectEither(TokenTypes.Comma, TokenTypes.RParen);
             }
             else
@@ -143,7 +145,7 @@ class Parser
             }
             else if (_currentToken.TokenType == TokenTypes.String)
             {
-                parentNode.AddChild(new AstNode(Opcode.PushArgument, _currentToken));
+                parentNode.AddChild(new ArgumentAstNode(Opcode.PushArgument, _currentToken, new BuildInString()));
                 ExpectEither(TokenTypes.Comma, TokenTypes.RParen);
             }
             else
