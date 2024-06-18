@@ -16,9 +16,9 @@ class Runner
     public void Run(AstTree ast, Dictionary<string, AstNode> functionDefinitions)
     {
         _functionDefinitions = functionDefinitions;
-        var root = ast.Root;
-        Debug.Assert(root is { Opcode: Opcode.Call });
-        _currentNode = root;
+        // var root = ast.Root;
+        // Debug.Assert(root is { Opcode: Opcode.Call });
+        // _currentNode = root;
         
         ExecuteNode(_currentNode);
     }
@@ -44,14 +44,14 @@ class Runner
                 break;
         }
         
-        if (node.Child != null)
-            ExecuteNode(node.Child);
-
-        if (node.Sibling == null) 
-            return;
-        
-        if (node.Sibling.Opcode != Opcode.FunctionDefinition)
-            ExecuteNode(node.Sibling);
+        // if (node.Children != null)
+        //     ExecuteNode(node.Children);
+        //
+        // if (node.Sibling == null) 
+        //     return;
+        //
+        // if (node.Sibling.Opcode != Opcode.FunctionDefinition)
+        //     ExecuteNode(node.Sibling);
     }
 
     private void HandleLoadArgument(AstNode node)

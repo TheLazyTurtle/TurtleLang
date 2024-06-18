@@ -4,46 +4,29 @@ namespace TurtleLang.Models.Ast;
 
 class AstNode
 {
-    public AstNode? Child { get; private set; }
-    public AstNode? Sibling { get; private set; }
+    public List<AstNode> Children { get; private set; } = new();
     public Opcode Opcode { get; }
     public string Value { get; }
     public int LineNumber { get; }
 
-    public AstNode(Opcode opcode, int lineNumber)
+    public AstNode(Opcode opcode, Token? token)
     {
         Opcode = opcode;
-        Value = "";
-        LineNumber = lineNumber;
-    }
-    
-    public AstNode(Opcode opcode, string value, int lineNumber)
-    {
-        Opcode = opcode;
-        Value = value;
-        LineNumber = lineNumber;
+        if (token == null)
+        {
+            Value = "";
+            LineNumber = 0;
+        }
+        else
+        {
+            Value = token.Value;
+            LineNumber = token.LineNumber;
+        }
     }
 
     public void AddChild(AstNode node)
     {
-        if (Child != null)
-        {
-            Child.AddSibling(node);
-            return;
-        }
-
-        Child = node;
-    }
-
-    public void AddSibling(AstNode node)
-    {
-        if (Sibling != null)
-        {
-            Sibling.AddSibling(node);
-            return;
-        }
-
-        Sibling = node;
+        Children.Add(node);
     }
 
     public override string ToString()
@@ -54,29 +37,31 @@ class AstNode
         if (!string.IsNullOrEmpty(Value))
             sb.Append($": {Value}");
 
-        if (Child != null)
-            sb.Append($"\n\t Child: -> {Child.ToString(0)}");
-
-        if (Sibling != null)
-            sb.Append($"\n| Sibling: {Sibling.ToString(0)}");
+        foreach (var child in Children)
+            sb.Append($"{child}");
 
         return sb.ToString();
     }
 
-    private string ToString(int depth)
+    public string ToString(int depth)
     {
         var sb = new StringBuilder();
+        var padding = new string(' ', depth * 2); // Double spaces
 
-        sb.Append(Opcode.ToString());
         if (!string.IsNullOrEmpty(Value))
-            sb.Append($": {Value}");
+            sb.AppendLine($"{padding}{Opcode.ToString()}: {Value}");
+        else
+            sb.AppendLine($"{padding}{Opcode.ToString()}");
 
         depth++;
-        if (Child != null)
-            sb.Append($"\n\t Child: -> {Child.ToString(depth)}");
-
-        if (Sibling != null)
-            sb.Append($"\n| Sibling: {Sibling.ToString(depth)}");
+        foreach (var child in Children)
+        {
+            sb.Append($"{child.ToString(depth)}");
+            if (child.Opcode == Opcode.Return)
+            {
+                depth--;
+            }
+        }
 
         return sb.ToString();
     }

@@ -1,19 +1,28 @@
-﻿namespace TurtleLang.Models.Ast;
+﻿using System.Text;
+
+namespace TurtleLang.Models.Ast;
 
 class AstTree
 {
-    public AstNode? Root { get; private set; }
+    public List<AstNode> Children { get; private set; } = new();
 
-    public void SetRoot(AstNode node)
+    public void AddChild(AstNode child)
     {
-        if (Root != null)
-            throw new Exception("Root is not allowed to be overwritten");
-
-        Root = node;
+        Children.Add(child);
     }
 
     public override string ToString()
     {
-        return $"{Root}";
+        var sb = new StringBuilder();
+
+        foreach (var child in Children)
+        {
+            if (child is FunctionDefinitionAstNode funcDef)
+                sb.AppendLine($"{funcDef.ToString()}");
+            else 
+                sb.AppendLine($"{child.ToString(0)}");
+        }
+
+        return sb.ToString();
     }
 }

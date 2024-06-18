@@ -2,16 +2,14 @@
 
 public enum TokenTypes
 {
-    Global,
     Fn,
-    FunctionIdentifier,
-    ArgumentIdentifier,
-    ArgumentValue,
+    Identifier,
     LParen,
     RParen,
     LCurly,
     RCurly,
-    Call,
     Semicolon,
+    String,
+    Comma,
     Eof,
 }

@@ -1,16 +1,14 @@
 ﻿using System.Diagnostics;
-using System.Text;
 using TurtleLang.Models;
 
 namespace TurtleLang.Lexer;
 
 class Lexer
 {
-    private string _code;
+    private string _code = string.Empty;
     private int _currentIndex;
-    private string _currentString;
+    private string _currentString = string.Empty;
     private int _currentLineNumber = 1; // 1 because a code file starts at line 1 not 0
-    private Token _prevToken;
     private readonly List<Token> _tokens = new();
     
     public List<Token> Lex(string code)
@@ -28,6 +26,12 @@ class Lexer
                 _currentIndex++;
                 continue;
             }
+
+            if (currentChar == '\"')
+            {
+                LexStringValue();
+                continue;
+            }
             
             _currentString = $"{_currentString}{currentChar}";
             
@@ -37,42 +41,26 @@ class Lexer
             {
                 Debug.Assert(token != null);
                 
-                _tokens.Add(token);
-                
-                if (token.TokenType == TokenTypes.LParen)
-                    ParseArgs();
-                
-                _prevToken = token;
-                _currentString = "";
+                AddToken(token);
             }
-
+            
             var nextChar = PeekNextChar();
+            _ = CheckToken(nextChar.ToString() ?? "", out success);
+
+            if ((nextChar == ' ' || success) && _currentString.Length > 0)
+            {
+                AddToken(TokenTypes.Identifier, _currentString);
+            }
             
             if (nextChar == null)
-            {
-                _tokens.Add(new Token(TokenTypes.Eof, _currentLineNumber));
                 break;
-            }
-            
-            if (nextChar == '(')
-            {
-                Token functionToken;
-                // Defining a function or calling a function
-                if (_prevToken.TokenType == TokenTypes.Fn)
-                    functionToken = new Token(TokenTypes.FunctionIdentifier, _currentString, _currentLineNumber);
-                else
-                    functionToken = new Token(TokenTypes.Call, _currentString, _currentLineNumber);
-                _tokens.Add(functionToken);
-                _prevToken = functionToken;
-                _currentString = "";
-            }
             _currentIndex++;
         }
         
-
+        _tokens.Add(new Token(TokenTypes.Eof, _currentLineNumber));
         return _tokens;
     }
-
+    
     private Token? CheckToken(string token, out bool success)
     {
         success = true;
@@ -90,51 +78,27 @@ class Lexer
                 return new Token(TokenTypes.RCurly, _currentLineNumber);
             case ";":
                 return new Token(TokenTypes.Semicolon, _currentLineNumber);
+            case ",":
+                return new Token(TokenTypes.Comma, _currentLineNumber);
             default:
                 success = false;
                 return null;
         }
     }
-
-    private void ParseArgs()
+    
+    private void LexStringValue()
     {
-        var isStaticString = false;
-        var tokenType = _prevToken.TokenType == TokenTypes.Call ? TokenTypes.ArgumentValue : TokenTypes.ArgumentIdentifier;
-        
-        var sb = new StringBuilder();
-        
-        while (PeekNextChar() != ')')
+        var str = "";
+        var c = GetNextChar();
+        while (c != '\"')
         {
-            var nextChar = GetNextChar();
-            if (nextChar == '\"')
-                isStaticString = !isStaticString;
-
-            if (nextChar == ',' &&  PeekNextCharSkipAllWhiteSpaces() == ')')
-                InterpreterErrorLogger.LogError("Trailing comma is not allowed", _prevToken);
-
-            if (!isStaticString && nextChar == ' ' && PeekNextChar() != ',')
-                InterpreterErrorLogger.LogError("Variables are not allowed to have spaces", _prevToken);
-            
-            // End of var
-            if (nextChar == ',')
-            {
-                _tokens.Add(new Token(tokenType, sb.ToString().Trim(), _currentLineNumber));
-                sb.Clear();
-
-                // Skip whitespace after comma if it is there
-                if (PeekNextChar() == ' ')
-                    GetNextChar();
-                
-                continue;
-            }
-            sb.Append(nextChar);
+            str += c;
+            c = GetNextChar();
         }
 
-        if (sb.Length == 0) 
-            return;
+        _currentIndex++; // To skip past the closing "
         
-        var token = new Token(tokenType, sb.ToString().Trim(), _currentLineNumber);
-        _tokens.Add(token);
+        AddToken(TokenTypes.String, str);
     }
 
     private char? PeekNextChar()
@@ -144,20 +108,6 @@ class Lexer
         
         return _code[_currentIndex + 1];
     }
-    
-    private char? PeekNextCharSkipAllWhiteSpaces()
-    {
-        if (_currentIndex + 1 >= _code.Length)
-            return null;
-
-        var index = 1;
-        var curChar = _code[_currentIndex + index];
-        while (curChar == ' ')
-        {
-            curChar = _code[_currentIndex + ++index];
-        }
-        return _code[_currentIndex + index];
-    }
 
     private char? GetNextChar()
     {
@@ -165,5 +115,23 @@ class Lexer
             return null; 
         
         return _code[++_currentIndex];
+    }
+
+    private void AddToken(TokenTypes type, string value)
+    {
+        var token = new Token(type, value, _currentLineNumber);
+        AddToken(token);
+    }
+    
+    private void AddToken(TokenTypes type)
+    {
+        var token = new Token(type, _currentLineNumber);
+        AddToken(token);
+    }
+    
+    private void AddToken(Token token)
+    {
+        _tokens.Add(token);
+        _currentString = "";
     }
 }

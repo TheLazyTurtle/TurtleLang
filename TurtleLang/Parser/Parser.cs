@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using TurtleLang.Models;
+﻿using TurtleLang.Models;
 using TurtleLang.Models.Ast;
 using TurtleLang.Models.Exceptions;
 
@@ -9,27 +8,30 @@ class Parser
 {
     private readonly AstTree _ast = new();
     private List<Token> _tokens;
-    private AstNode _parentNode;
+    // private AstNode _parentNode;
+    private Stack<AstNode> _parents = new();
     private Token _currentToken;
     private int _currentIndex;
     private int _curlyCount;
     
-    public Dictionary<string, AstNode> FunctionNodesByName { get; } = new();
+    public Dictionary<string, AstNode?> FunctionNodesByName { get; } = new();
 
-    public AstTree Parse(List<Token> tokens)
+    public Parser(List<Token> tokens)
     {
-        _parentNode = new AstNode(Opcode.Call, "Main", 0);
-        _ast.SetRoot(_parentNode);
-        
         _tokens = tokens;
+        
+        var callMain = new AstNode(Opcode.Call, new Token(TokenTypes.Identifier, "Main", 0));
+        _ast.AddChild(callMain);
+        _currentToken = _tokens[0];
+    }
 
-        var token = _tokens[_currentIndex];
+    public AstTree Parse()
+    {
         while (_currentIndex < _tokens.Count)
         {
-            Check(token);
-            token = GetNextToken();
+            Check(_currentToken);
 
-            if (token == null)
+            if (_currentToken.TokenType == TokenTypes.Eof)
                 break;
         }
         
@@ -40,97 +42,132 @@ class Parser
         return _ast;
     }
 
-    private void Check(Token? token)
+    private void Check(Token token)
     {
-        if (token == null)
-            return;
-        
-        AstNode astNode;
         switch (token.TokenType)
         {
             case TokenTypes.Fn:
                 if (_curlyCount != 0)
-                    InterpreterErrorLogger.LogError("Curly braces do not close enough before starting new function decl", _currentToken);
+                    InterpreterErrorLogger.LogError("Cannot define function in scope", _currentToken);
                 
-                Expect(TokenTypes.FunctionIdentifier);
-                astNode = new FunctionDefinitionAstNode(Opcode.FunctionDefinition, _currentToken.Value, _currentToken.LineNumber);
-                _parentNode.AddSibling(astNode);
-                _parentNode = astNode;
-                DefineFunction(astNode);
-                break;
-            case TokenTypes.Call:
-                astNode = new AstNode(Opcode.Call, _currentToken.Value, _currentToken.LineNumber);
+                Expect(TokenTypes.Identifier);
+                var functionDefinition = new FunctionDefinitionAstNode(Opcode.FunctionDefinition, _currentToken);
+                DefineFunction(functionDefinition);
+                _ast.AddChild(functionDefinition);
+                _parents.Push(functionDefinition);
                 Expect(TokenTypes.LParen);
-                
-                // This indirectly becomes an Expect(RParen) and does not need to be checked again
-                while (_currentToken.TokenType != TokenTypes.RParen)
+                break;
+            case TokenTypes.Identifier:
+                var expected = PeekNextToken();
+                if (expected!.TokenType == TokenTypes.LParen)
                 {
-                    var next = GetNextToken();
-                    Debug.Assert(next != null);
-
-                    if (next.TokenType == TokenTypes.ArgumentValue)
-                    {
-                        _parentNode.AddChild(new AstNode(Opcode.PushArgument, next.Value, _currentToken.LineNumber));
-                    }
+                    var callNode = new AstNode(Opcode.Call, _currentToken);
+                    Expect(TokenTypes.LParen);
+                    _parents.Peek().AddChild(callNode);
+                    _parents.Push(callNode);
                 }
-                Expect(TokenTypes.Semicolon);
-                _parentNode.AddChild(astNode);
-                break;
-            case TokenTypes.FunctionIdentifier:
-                Expect(TokenTypes.LParen);
                 break;
             case TokenTypes.LParen:
-                // This indirectly becomes an Expect(RParen) and does not need to be checked again
-                while (_currentToken.TokenType != TokenTypes.RParen)
+                if (_parents.Peek() is FunctionDefinitionAstNode funcDef)
                 {
-                    var next = GetNextToken();
-                    Debug.Assert(next != null);
-                    if (next.TokenType != TokenTypes.ArgumentIdentifier) 
-                        continue;
-                    
-                    if (_parentNode is not FunctionDefinitionAstNode functionDefinition)
-                        throw new Exception();
-                        
-                    _parentNode.AddChild(new AstNode(Opcode.LoadArgument, next.Value, _currentToken.LineNumber));
-                    functionDefinition.AddArgument();
+                    ParseParameterDefinition(funcDef);
                 }
-                break;
-            case TokenTypes.RParen:
-                Expect(TokenTypes.LCurly);
+                else
+                {
+                    ParseParameterValues(_parents.Peek());
+                    Expect(TokenTypes.Semicolon);
+                }
                 break;
             case TokenTypes.LCurly:
                 _curlyCount++;
-                // This indirectly becomes an Expect(RCurly) and does not need to be checked again
-                while (_currentToken.TokenType != TokenTypes.RCurly)
-                    Check(GetNextToken());
-                _parentNode.AddSibling(new AstNode(Opcode.Return, _currentToken.LineNumber));
+                GetNextToken();
                 break;
             case TokenTypes.RCurly:
                 _curlyCount--;
+                // TODO: Find a better way for implicit returns
+                if (_curlyCount == 0)
+                {
+                    _parents.Peek().AddChild(new AstNode(Opcode.Return, null)); // Implicit return
+                    _parents.Pop();
+                }
+                GetNextToken(); // Just skip it as it has no meaning
                 break;
-            case TokenTypes.ArgumentIdentifier:
+            case TokenTypes.Semicolon:
+                GetNextToken(); // Just skip it as it has no meaning
+                if (_parents.Peek().Opcode == Opcode.Call)
+                    _parents.Pop();
+                break;
+            case TokenTypes.String:
+                GetNextToken(); // Just skip it as it has no meaning
+                break;
+            case TokenTypes.Comma:
+                GetNextToken(); // Just skip it as it has no meaning
+                break;
             case TokenTypes.Eof:
+            case TokenTypes.RParen:
+                GetNextToken(); // Just skip it as it has no meaning
                 break;
             default:
                 throw new ArgumentOutOfRangeException();
         }
     }
+
+    private void ParseParameterDefinition(FunctionDefinitionAstNode funcDef)
+    {
+        GetNextToken();
+        while (_currentToken.TokenType != TokenTypes.RParen)
+        {
+            if (_currentToken.TokenType == TokenTypes.Identifier)
+            {
+                funcDef.AddArgument(_currentToken.Value);
+                ExpectEither(TokenTypes.Comma, TokenTypes.RParen);
+            }
+            else
+            {
+                GetNextToken();
+            }
+        }
+    }
     
+    private void ParseParameterValues(AstNode parentNode)
+    {
+        GetNextToken();
+
+        while (_currentToken.TokenType != TokenTypes.RParen)
+        {
+            if (_currentToken.TokenType == TokenTypes.Identifier)
+            {
+                // TODO: One day we can choose to make it push values and parameters differently on compile time and not runtime
+                parentNode.AddChild(new AstNode(Opcode.PushArgument, _currentToken));
+                ExpectEither(TokenTypes.Comma, TokenTypes.RParen);
+            }
+            else if (_currentToken.TokenType == TokenTypes.String)
+            {
+                parentNode.AddChild(new AstNode(Opcode.PushArgument, _currentToken));
+                ExpectEither(TokenTypes.Comma, TokenTypes.RParen);
+            }
+            else
+            {
+                GetNextToken();
+            }
+        }
+    }
+
     private Token? PeekNextToken()
     {
-        if (_currentIndex + 1 >= _tokens.Count) 
+        if (_currentIndex + 1 >= _tokens.Count)
             return null;
         
-        _currentToken = _tokens[_currentIndex + 1];
-        return _currentToken;
+        return _tokens[_currentIndex + 1];
     }
     
     private Token? GetNextToken()
     {
         if (_currentIndex + 1 >= _tokens.Count) 
             return null;
-        
-        _currentToken = _tokens[++_currentIndex];
+
+        _currentIndex++;
+        _currentToken = _tokens[_currentIndex];
         return _currentToken;
     }
 
@@ -142,6 +179,18 @@ class Parser
         
         if (next.TokenType != expected)
             InterpreterErrorLogger.LogError($"Expected: {expected.ToString()} got {next}", _currentToken);
+    }
+
+    private void ExpectEither(TokenTypes first, TokenTypes second)
+    {
+        var next = GetNextToken();
+        if (next == null)
+            throw new UnexpectedTokenException("Token was null");
+
+        if (next.TokenType != first && next.TokenType != second)
+        {
+            InterpreterErrorLogger.LogError($"Expected: {first.ToString()} or {second.ToString()} got {next}", _currentToken);
+        }
     }
 
     private void DefineFunction(AstNode node)
