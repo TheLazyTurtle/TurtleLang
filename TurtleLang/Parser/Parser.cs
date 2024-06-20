@@ -2,6 +2,7 @@
 using TurtleLang.Models.Ast;
 using TurtleLang.Models.BuildIn.Types;
 using TurtleLang.Models.Exceptions;
+using TurtleLang.Repositories;
 
 namespace TurtleLang.Parser;
 
@@ -9,14 +10,11 @@ class Parser
 {
     private readonly AstTree _ast = new();
     private List<Token> _tokens;
-    // private AstNode _parentNode;
     private Stack<AstNode> _parents = new();
     private Token _currentToken;
     private int _currentIndex;
     private int _curlyCount;
     
-    public Dictionary<string, AstNode?> FunctionNodesByName { get; } = new();
-
     public Parser(List<Token> tokens)
     {
         _tokens = tokens;
@@ -37,7 +35,7 @@ class Parser
         }
         
         // Validate that there is a main function
-        if (!FunctionNodesByName.ContainsKey("Main"))
+        if (!FunctionDefinitions.Contains("Main"))
             InterpreterErrorLogger.LogError("No main function defined");
 
         return _ast;
@@ -62,21 +60,22 @@ class Parser
                 var expected = PeekNextToken();
                 if (expected!.TokenType == TokenTypes.LParen)
                 {
-                    var callNode = new AstNode(Opcode.Call, _currentToken);
+                    var callToken = _currentToken;
+                    
                     Expect(TokenTypes.LParen);
+                    ParseParameterValues(_parents.Peek());
+                    _parents.Peek().AddChild(new AstNode(Opcode.PushStackFrame, _currentToken));
+                    
+                    var callNode = new AstNode(Opcode.Call, callToken);
                     _parents.Peek().AddChild(callNode);
-                    _parents.Push(callNode);
+                    
+                    Expect(TokenTypes.Semicolon);
                 }
                 break;
             case TokenTypes.LParen:
                 if (_parents.Peek() is FunctionDefinitionAstNode funcDef)
                 {
                     ParseParameterDefinition(funcDef);
-                }
-                else
-                {
-                    ParseParameterValues(_parents.Peek());
-                    Expect(TokenTypes.Semicolon);
                 }
                 break;
             case TokenTypes.LCurly:
@@ -140,12 +139,12 @@ class Parser
             if (_currentToken.TokenType == TokenTypes.Identifier)
             {
                 // TODO: One day we can choose to make it push values and parameters differently on compile time and not runtime
-                parentNode.AddChild(new AstNode(Opcode.PushArgument, _currentToken));
+                parentNode.AddChild(new AstNode(Opcode.AddArgument, _currentToken));
                 ExpectEither(TokenTypes.Comma, TokenTypes.RParen);
             }
             else if (_currentToken.TokenType == TokenTypes.String)
             {
-                parentNode.AddChild(new ArgumentAstNode(Opcode.PushArgument, _currentToken, new BuildInString()));
+                parentNode.AddChild(new ArgumentAstNode(Opcode.AddArgument, _currentToken, new BuildInString()));
                 ExpectEither(TokenTypes.Comma, TokenTypes.RParen);
             }
             else
@@ -198,9 +197,9 @@ class Parser
     private void DefineFunction(AstNode node)
     {
         // TODO: Make sure that we cannot redefine a builtin function
-        if (FunctionNodesByName.ContainsKey(node.Value))
+        if (FunctionDefinitions.Contains(node.Value))
             InterpreterErrorLogger.LogError($"Redefinition of function with name: {node.Value}", _currentToken);
         
-        FunctionNodesByName.Add(node.Value, node);
+        FunctionDefinitions.Add(node.Value, node);
     }
 }

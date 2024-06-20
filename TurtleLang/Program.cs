@@ -1,5 +1,4 @@
-﻿using TurtleLang.Models.Ast;
-using TurtleLang.Runtime;
+﻿using TurtleLang.Runtime;
 
 namespace TurtleLang;
 
@@ -28,6 +27,7 @@ abstract class Program
         // TODO: Place a function here that validates that all called functions actually exist
 
         InternalLogger.Log("=============== Runner ===============");
-        Runner.Run(ast, _parser.FunctionNodesByName);
+        Runner.LoadBuildInFunctions();
+        Runner.Run(ast);
     }
 }

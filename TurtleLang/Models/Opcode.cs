@@ -5,7 +5,8 @@ enum Opcode
     FunctionDefinition,
     Call,
     LoadArgument,
-    PushArgument,
+    AddArgument,
+    PushStackFrame,
     Return,
     Eof
 }

@@ -3,9 +3,7 @@
 }
 
 fn Second(i, j) {
-    Third(i, "asdf");
-}
-
-fn Third(varA, varB) {
-    Print(varA, "This is a quick string in between", varB);
+    Print(i);
+    Print(j);
+    Print("asfd", " And a second string");
 }

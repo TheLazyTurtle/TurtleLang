@@ -23,7 +23,7 @@ class AstNode
             LineNumber = token.LineNumber;
         }
     }
-
+    
     public void AddChild(AstNode node)
     {
         Children.Add(node);
@@ -31,16 +31,7 @@ class AstNode
 
     public override string ToString()
     {
-        var sb = new StringBuilder();
-
-        sb.Append(Opcode.ToString());
-        if (!string.IsNullOrEmpty(Value))
-            sb.Append($": {Value}");
-
-        foreach (var child in Children)
-            sb.Append($"{child}");
-
-        return sb.ToString();
+        return $"{Opcode.ToString()} {Value}";
     }
 
     public string ToString(int depth)
