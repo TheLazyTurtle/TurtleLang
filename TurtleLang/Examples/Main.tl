@@ -4,7 +4,10 @@
 
 fn Second(i) {
     if (i > 10) {
-        Print("bigger than 10");
+        Print("If branch", i);
+    }
+    else {
+        Print("Else branch", i);
     }
     Print(i);
 }

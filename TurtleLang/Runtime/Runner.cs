@@ -1,7 +1,6 @@
 ﻿using System.Diagnostics;
 using TurtleLang.Models;
 using TurtleLang.Models.Ast;
-using TurtleLang.Models.Scopes;
 using TurtleLang.Repositories;
 using StackFrame = TurtleLang.Models.StackFrame;
 
@@ -10,7 +9,7 @@ namespace TurtleLang.Runtime;
 class Runner
 {
     private readonly Stack<StackFrame> _stack = new();
-    private StackFrame? _stackFrameBeingBuild = null;
+    private StackFrame? _stackFrameBeingBuild;
     
     public void Run(AstTree ast)
     {
@@ -45,6 +44,9 @@ class Runner
             case Opcode.If:
                 HandleIfStatement(node);
                 return;
+            case Opcode.Else:
+                Debug.Assert(false, "This should not happen as else should be handled by if");
+                return;
             case Opcode.PushStackFrame:
                 _stack.Push(_stackFrameBeingBuild!);
                 InternalLogger.Log("Pushed stackframe");
@@ -77,10 +79,22 @@ class Runner
 
         var expression = ifAstNode.Expression;
         var solved = SolveExpression(expression);
-        
-        if (!solved)
-            return;
 
+        // Handle else branch
+        if (!solved)
+        {
+            var elseScope = ifAstNode.Else?.Scope;
+            if (elseScope == null)
+                return;
+                    
+            foreach (var child in elseScope.Children)
+            {
+                ExecuteNode(child);
+            }
+            return;
+        }
+
+        // Handle if branch
         var children = ifAstNode.GetChildren();
         if (children == null)
             return;

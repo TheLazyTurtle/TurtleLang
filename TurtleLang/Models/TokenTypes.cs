@@ -6,6 +6,7 @@ public enum TokenTypes
 {
     Fn,
     If,
+    Else,
     Eq,
     Gt,
     Lt,

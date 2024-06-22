@@ -12,7 +12,6 @@ class Parser
     private readonly AstTree _ast = new();
     private List<Token> _tokens;
     private Stack<AstNode> _parents = new();
-    private Stack<BaseScope> _scopes = new();
     private Token _currentToken;
     private int _currentIndex;
     private int _curlyCount;
@@ -55,7 +54,6 @@ class Parser
                 var functionDefinition = new FunctionDefinitionAstNode(Opcode.FunctionDefinition, _currentToken);
                 var functionScope = new FunctionScope();
                 functionDefinition.AddScope(functionScope);
-                _scopes.Push(functionScope);
                 
                 DefineFunction(functionDefinition);
                 _ast.AddChild(functionDefinition);
@@ -101,7 +99,14 @@ class Parser
                     
                     scopeableParent.AddChild(new AstNode(Opcode.Return, null)); // Implicit return
                 }
-                _parents.Pop();
+
+                if (_parents.Peek() is IfAstNode && PeekNextToken().TokenType == TokenTypes.Else)
+                {
+                    GetNextToken();
+                    break;
+                }
+                
+                _parents.Pop(); 
                 GetNextToken(); // Just skip it as it has no meaning
                 break;
             case TokenTypes.Semicolon:
@@ -118,6 +123,9 @@ class Parser
             case TokenTypes.If:
                 ParseIfStatement();
                 break;
+            case TokenTypes.Else:
+                ParseElseStatement();
+                break;
             case TokenTypes.Eof:
             case TokenTypes.RParen:
                 GetNextToken(); // Just skip it as it has no meaning
@@ -125,6 +133,26 @@ class Parser
             default:
                 throw new ArgumentOutOfRangeException();
         }
+    }
+
+    private void ParseElseStatement()
+    {
+        var elseToken = _currentToken;
+        Expect(TokenTypes.LCurly);
+        var parentPeek = _parents.Peek();
+        
+        if (parentPeek is not IfAstNode ifNode)
+        {
+            InterpreterErrorLogger.LogError("Else needs to be connected to an if");
+            return;
+        }
+
+        var elseNode = new ElseAstNode(elseToken);
+        var elseScope = new IfScope();
+        elseNode.AddScope(elseScope);
+        ifNode.AddElse(elseNode);
+        _parents.Pop(); // Remove the if
+        _parents.Push(elseNode);
     }
 
     private void ParseIfStatement()

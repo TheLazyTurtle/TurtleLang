@@ -3,16 +3,12 @@ using TurtleLang.Models.Scopes;
 
 namespace TurtleLang.Models.Ast;
 
-class IfAstNode: ScopeableAstNode
+class ElseAstNode: ScopeableAstNode
 {
-    public ExpressionAstNode Expression { get; }
-    public ElseAstNode? Else { get; private set; }
-    
-    public IfAstNode(ExpressionAstNode expression, Token? token) : base(Opcode.If, token)
+    public ElseAstNode(Token? token) : base(Opcode.Else, token)
     {
-        Expression = expression;
     }
-
+    
     public void AddScope(IfScope scope)
     {
         if (Scope != null)
@@ -21,23 +17,13 @@ class IfAstNode: ScopeableAstNode
         Scope = scope;
     }
 
-    public void AddElse(ElseAstNode node)
-    {
-        if (Else != null)
-        {
-            InterpreterErrorLogger.LogError("Else node already added");
-            return;
-        }
-
-        Else = node;
-    }
-    
     public new string ToString(int depth)
     {
         var sb = new StringBuilder();
+        
         var padding = new string(' ', depth * 2); // Double spaces
 
-        sb.Append($"{padding}if ({Expression}) ");
+        sb.Append($"{padding}else");
 
         depth++;
         if (Scope == null)
@@ -55,11 +41,6 @@ class IfAstNode: ScopeableAstNode
 
         sb.Append($"{padding}");
         sb.AppendLine("}");
-        
-        if (Else != null)
-        {
-            sb.AppendLine($"{padding}{Else.ToString(--depth)}");
-        }
 
         return sb.ToString();
     }

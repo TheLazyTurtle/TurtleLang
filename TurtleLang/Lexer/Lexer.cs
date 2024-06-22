@@ -134,6 +134,9 @@ class Lexer
             case "if":
                 AddToken(TokenTypes.If);
                 return;
+            case "else":
+                AddToken(TokenTypes.Else);
+                return;
         }
         
         AddToken(new Token(TokenTypes.Identifier, str, _currentLineNumber));
