@@ -7,11 +7,16 @@ public enum TokenTypes
     Fn,
     If,
     Else,
+    For,
     Eq,
     Gt,
     Lt,
     Gte,
     Lte,
+    Add,
+    Increase,
+    Sub,
+    Decrease,
     Assign,
     Identifier,
     LParen,
@@ -52,6 +57,35 @@ static class TokenTypesExtensions
             case TokenTypes.Semicolon:
             case TokenTypes.String:
             case TokenTypes.Int:
+            case TokenTypes.Comma:
+            case TokenTypes.Eof:
+            default:
+                throw new ArgumentOutOfRangeException(nameof(tokenType), tokenType, null);
+        }
+    }
+
+    public static BuildInTypes TokenTypeToBuildInType(this TokenTypes tokenType)
+    {
+        switch (tokenType)
+        {
+            case TokenTypes.String:
+                return BuildInTypes.String;
+            case TokenTypes.Int:
+                return BuildInTypes.Int;
+            case TokenTypes.Eq:
+            case TokenTypes.Gt:
+            case TokenTypes.Lt:
+            case TokenTypes.Gte:
+            case TokenTypes.Lte:
+            case TokenTypes.Fn:
+            case TokenTypes.If:
+            case TokenTypes.Assign:
+            case TokenTypes.Identifier:
+            case TokenTypes.LParen:
+            case TokenTypes.RParen:
+            case TokenTypes.LCurly:
+            case TokenTypes.RCurly:
+            case TokenTypes.Semicolon:
             case TokenTypes.Comma:
             case TokenTypes.Eof:
             default:

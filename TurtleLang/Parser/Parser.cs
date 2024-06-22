@@ -46,35 +46,10 @@ class Parser
         switch (token.TokenType)
         {
             case TokenTypes.Fn:
-                if (_curlyCount != 0)
-                    InterpreterErrorLogger.LogError("Cannot define function in scope", _currentToken);
-                
-                Expect(TokenTypes.Identifier);
-                var functionDefinition = new FunctionDefinitionAstNode(Opcode.FunctionDefinition, _currentToken);
-                
-                DefineFunction(functionDefinition);
-                _ast.AddChild(functionDefinition);
-                _parents.Push(functionDefinition);
-                Expect(TokenTypes.LParen);
+                ParseFunctionDefinition();
                 break;
             case TokenTypes.Identifier:
-                var expected = PeekNextToken();
-                if (expected!.TokenType == TokenTypes.LParen)
-                {
-                    var callToken = _currentToken;
-                    
-                    Expect(TokenTypes.LParen);
-                    if (_parents.Peek() is not ScopeableAstNode scopeableAstNode)
-                        break;
-                        
-                    ParseParameterValues(scopeableAstNode);
-                    scopeableAstNode.AddChild(new AstNode(Opcode.PushStackFrame, _currentToken));
-                    
-                    var callNode = new AstNode(Opcode.Call, callToken);
-                    scopeableAstNode.AddChild(callNode);
-                    
-                    Expect(TokenTypes.Semicolon);
-                }
+                ParseIdentifier();
                 break;
             case TokenTypes.LParen:
                 if (_parents.Peek() is FunctionDefinitionAstNode funcDef)
@@ -87,24 +62,7 @@ class Parser
                 GetNextToken();
                 break;
             case TokenTypes.RCurly:
-                _curlyCount--;
-                // TODO: Find a better way for implicit returns
-                if (_curlyCount == 0)
-                {
-                    if (_parents.Peek() is not ScopeableAstNode scopeableParent)
-                        break;
-                    
-                    scopeableParent.AddChild(new AstNode(Opcode.Return, null)); // Implicit return
-                }
-
-                if (_parents.Peek() is IfAstNode && PeekNextToken().TokenType == TokenTypes.Else)
-                {
-                    GetNextToken();
-                    break;
-                }
-                
-                _parents.Pop(); 
-                GetNextToken(); // Just skip it as it has no meaning
+                ParseRCurly();
                 break;
             case TokenTypes.Semicolon:
                 GetNextToken(); // Just skip it as it has no meaning
@@ -123,6 +81,9 @@ class Parser
             case TokenTypes.Else:
                 ParseElseStatement();
                 break;
+            case TokenTypes.For:
+                ParseFor();
+                break;
             case TokenTypes.Eof:
             case TokenTypes.RParen:
                 GetNextToken(); // Just skip it as it has no meaning
@@ -130,6 +91,108 @@ class Parser
             default:
                 throw new ArgumentOutOfRangeException();
         }
+    }
+
+    private void ParseFor()
+    {
+        var forToken = _currentToken;
+        Expect(TokenTypes.LParen);
+
+        var forAstNode = new ForAstNode(forToken);
+        var parent = _parents.Peek();
+        if (parent is not ScopeableAstNode scopeableAstNode)
+            return;
+        
+        // Read the variable
+        Expect(TokenTypes.Identifier);
+        var identifier = _currentToken;
+        var identifierAst = new VariableAstNode(identifier);
+        Expect(TokenTypes.Assign);
+
+        ExpectIdentifierOrValue();
+        var value = _currentToken;
+        var valueAst = new ValueAstNode(Opcode.Value, value, value.TokenType.TokenTypeToBuildInType());
+        Expect(TokenTypes.Semicolon);
+
+        scopeableAstNode.AddChild(new AstNode(Opcode.PushLocalVar, identifier));
+        scopeableAstNode.AddChild(new ExpressionAstNode(identifierAst, valueAst, ExpressionTypes.Assign, identifier));
+
+        // Read the expr
+        var expression = ParseConditionExpression();
+        forAstNode.AddExpression(expression);
+        Expect(TokenTypes.Semicolon);
+
+        // The operation
+        Expect(TokenTypes.Identifier);
+        var operationIdentifier = _currentToken;
+        var operationIdentifierAstNode = new VariableAstNode(operationIdentifier);
+        
+        ExpectEither(TokenTypes.Increase, TokenTypes.Decrease);
+        var operation = _currentToken;
+        var expressionType = operation.TokenType == TokenTypes.Increase ? ExpressionTypes.Increase : ExpressionTypes.Decrease;
+        forAstNode.AddChild(new ExpressionAstNode(operationIdentifierAstNode, expressionType, operationIdentifier));
+        
+        scopeableAstNode.AddChild(forAstNode);
+        _parents.Push(forAstNode);
+
+        GetNextToken();
+    }
+    
+    private void ParseFunctionDefinition()
+    {
+        if (_curlyCount != 0)
+            InterpreterErrorLogger.LogError("Cannot define function in scope", _currentToken);
+        
+        Expect(TokenTypes.Identifier);
+        var functionDefinition = new FunctionDefinitionAstNode(Opcode.FunctionDefinition, _currentToken);
+        
+        DefineFunction(functionDefinition);
+        _ast.AddChild(functionDefinition);
+        _parents.Push(functionDefinition);
+        Expect(TokenTypes.LParen);
+    }
+
+    private void ParseIdentifier()
+    {
+        var expected = PeekNextToken();
+        if (expected!.TokenType != TokenTypes.LParen) 
+            return;
+        
+        var callToken = _currentToken;
+            
+        Expect(TokenTypes.LParen);
+        if (_parents.Peek() is not ScopeableAstNode scopeableAstNode)
+            return;
+                
+        ParseParameterValues(scopeableAstNode);
+        scopeableAstNode.AddChild(new AstNode(Opcode.PushStackFrame, _currentToken));
+            
+        var callNode = new AstNode(Opcode.Call, callToken);
+        scopeableAstNode.AddChild(callNode);
+            
+        Expect(TokenTypes.Semicolon);
+    }
+
+    private void ParseRCurly()
+    {
+        _curlyCount--;
+        // TODO: Find a better way for implicit returns
+        if (_curlyCount == 0)
+        {
+            if (_parents.Peek() is not ScopeableAstNode scopeableParent)
+                return;
+            
+            scopeableParent.AddChild(new AstNode(Opcode.Return, null)); // Implicit return
+        }
+
+        if (_parents.Peek() is IfAstNode && PeekNextToken().TokenType == TokenTypes.Else)
+        {
+            GetNextToken();
+            return;
+        }
+        
+        _parents.Pop(); 
+        GetNextToken(); // Just skip it as it has no meaning
     }
 
     private void ParseElseStatement()

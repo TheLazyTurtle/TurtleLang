@@ -65,6 +65,13 @@ class Lexer
                 case '<':
                     ConsumeLtOrLte();
                     continue;
+                case '+':
+                    ConsumeAddOrIncrease();
+                    continue;
+                case '-':
+                    ConsumeSubOrDecrease();
+                    continue;
+                    
             }
             
             GetIdentifierOrKeyword();
@@ -72,6 +79,26 @@ class Lexer
         
         _tokens.Add(new Token(TokenTypes.Eof, _currentLineNumber));
         return _tokens;
+    }
+
+    private void ConsumeSubOrDecrease()
+    {
+        var currentChar = _code[_currentIndex];
+        Debug.Assert(currentChar == '-');
+        
+        var nextChar = GetNextChar();
+        AddToken(nextChar == '-' ? TokenTypes.Decrease : TokenTypes.Sub);
+        GetNextChar();
+    }
+
+    private void ConsumeAddOrIncrease()
+    {
+        var currentChar = _code[_currentIndex];
+        Debug.Assert(currentChar == '+');
+        
+        var nextChar = GetNextChar();
+        AddToken(nextChar == '+' ? TokenTypes.Increase : TokenTypes.Add);
+        GetNextChar();
     }
 
     private void ConsumeLtOrLte()
@@ -136,6 +163,9 @@ class Lexer
                 return;
             case "else":
                 AddToken(TokenTypes.Else);
+                return;
+            case "for":
+                AddToken(TokenTypes.For);
                 return;
         }
         

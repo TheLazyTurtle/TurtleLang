@@ -4,6 +4,7 @@ enum Opcode
 {
     If,
     Else,
+    For,
     Variable,
     Value,
     Expression,
@@ -11,6 +12,7 @@ enum Opcode
     Call,
     LoadArgument,
     AddArgument,
+    PushLocalVar,
     PushStackFrame,
     Return,
     Eof

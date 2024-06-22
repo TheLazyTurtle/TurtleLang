@@ -11,7 +11,7 @@ abstract class Program
     static void Main(string[] args)
     {
         var code = File.ReadAllText("Examples/Main.tl");
-        InternalLogger.IsLoggingEnabled = false;
+        InternalLogger.IsLoggingEnabled = true;
         InternalLogger.Log("================ Lexer ================");
         
         var tokens = Lexer.Lex(code);
@@ -23,10 +23,10 @@ abstract class Program
         var ast = _parser.Parse();
         InternalLogger.Log(ast.ToString());
         
-        // TODO: Place a function here that validates that all called functions actually exist
-        
-        InternalLogger.Log("=============== Runner ===============");
-        Runner.LoadBuildInFunctions();
-        Runner.Run(ast);
+        // // TODO: Place a function here that validates that all called functions actually exist
+        //
+        // InternalLogger.Log("=============== Runner ===============");
+        // Runner.LoadBuildInFunctions();
+        // Runner.Run(ast);
     }
 }

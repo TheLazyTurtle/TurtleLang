@@ -2,6 +2,9 @@
 
 enum ExpressionTypes
 {
+    Increase,
+    Decrease,
+    Assign,
     Eq,
     Gt,
     Gte,
@@ -15,6 +18,9 @@ static class ExpressionTypesExtensions
     {
         return type switch
         {
+            ExpressionTypes.Increase => "++",
+            ExpressionTypes.Decrease => "--",
+            ExpressionTypes.Assign => "=",
             ExpressionTypes.Eq => "==",
             ExpressionTypes.Gt => ">",
             ExpressionTypes.Gte => ">=",

@@ -3,11 +3,7 @@
 }
 
 fn Second(i) {
-    if (i > 10) {
-        Print("If branch", i);
-    }
-    else {
-        Print("Else branch", i);
+    for (j = 0; j < 100; j++) {
     }
     Print(i);
 }
