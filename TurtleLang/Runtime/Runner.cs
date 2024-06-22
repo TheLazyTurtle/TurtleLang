@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using TurtleLang.Models;
 using TurtleLang.Models.Ast;
+using TurtleLang.Models.Scopes;
 using TurtleLang.Repositories;
 using StackFrame = TurtleLang.Models.StackFrame;
 
@@ -41,6 +42,9 @@ class Runner
             case Opcode.AddArgument:
                 HandleAddArgument(node);
                 return;
+            case Opcode.If:
+                HandleIfStatement(node);
+                return;
             case Opcode.PushStackFrame:
                 _stack.Push(_stackFrameBeingBuild!);
                 InternalLogger.Log("Pushed stackframe");
@@ -48,10 +52,22 @@ class Runner
                 return;
         }
 
-        foreach (var child in node.Children)
+        if (node is not ScopeableAstNode scopeableAstNode)
+            return;
+
+        var children = scopeableAstNode.GetChildren();
+        
+        if (children == null)
+            return;
+        
+        foreach (var child in children)
         {
             ExecuteNode(child);
         }
+    }
+
+    private void HandleIfStatement(AstNode node)
+    {
     }
 
     private void HandleLoadArgument(AstNode node)
@@ -75,12 +91,12 @@ class Runner
         if (intValue != null)
         {
             _stackFrameBeingBuild.AddArgument(new RuntimeValue(PrimitiveTypes.Int, intValue));
-            InternalLogger.Log($"Adding int value of: {node.GetValueAsString()} to stackframe");
+            InternalLogger.Log($"Adding int value of: {node.GetValueAsInt()} to stackframe");
             return;
         }
 
         // Handle string as input
-        if (node is ArgumentAstNode argNode)
+        if (node is ValueAstNode argNode)
         {
             _stackFrameBeingBuild.AddArgument(new RuntimeValue(PrimitiveTypes.String, argNode.GetValueAsString()!));
             

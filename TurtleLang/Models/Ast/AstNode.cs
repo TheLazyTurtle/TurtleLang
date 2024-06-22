@@ -4,7 +4,7 @@ namespace TurtleLang.Models.Ast;
 
 class AstNode
 {
-    public List<AstNode> Children { get; private set; } = new();
+    // public List<AstNode> Children { get; private set; } = new();
     public Opcode Opcode { get; }
     private object _value;
     // public string Value { get; }
@@ -29,10 +29,10 @@ class AstNode
         }
     }
     
-    public void AddChild(AstNode node)
-    {
-        Children.Add(node);
-    }
+    // public void AddChild(AstNode node)
+    // {
+    //     Children.Add(node);
+    // }
 
     public override string ToString()
     {
@@ -82,15 +82,15 @@ class AstNode
             sb.AppendLine($"{padding}{Opcode.ToString()}");
         }
 
-        depth++;
-        foreach (var child in Children)
-        {
-            sb.Append($"{child.ToString(depth)}");
-            if (child.Opcode == Opcode.Return)
-            {
-                depth--;
-            }
-        }
+        // depth++;
+        // foreach (var child in Children)
+        // {
+        //     sb.Append($"{child.ToString(depth)}");
+        //     if (child.Opcode == Opcode.Return)
+        //         depth--;
+        //     else if (child is IfAstNode ifNode)
+        //         sb.AppendLine($"{ifNode.ToString(0)}");
+        // }
 
         return sb.ToString();
     }

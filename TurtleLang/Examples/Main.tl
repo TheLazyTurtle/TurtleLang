@@ -1,9 +1,7 @@
 ﻿fn Main() {
-    Second(1, 2);
+    Second(1);
 }
 
-fn Second(i, j) {
+fn Second(i) {
     Print(i);
-    Print(j);
-    Print("asfd", " And a second string");
 }

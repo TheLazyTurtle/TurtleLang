@@ -2,6 +2,10 @@
 
 enum Opcode
 {
+    If,
+    Identifier,
+    Value,
+    Expression,
     FunctionDefinition,
     Call,
     LoadArgument,

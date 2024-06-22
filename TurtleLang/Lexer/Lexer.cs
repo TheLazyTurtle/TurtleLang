@@ -56,6 +56,15 @@ class Lexer
                 case ',':
                     ConsumeSingleCharToken(TokenTypes.Comma);
                     continue;
+                case '=':
+                    ConsumeAssignOrEqual();
+                    continue;
+                case '>':
+                    ConsumeGtOrGte();
+                    continue;
+                case '<':
+                    ConsumeLtOrLte();
+                    continue;
             }
             
             GetIdentifierOrKeyword();
@@ -63,6 +72,36 @@ class Lexer
         
         _tokens.Add(new Token(TokenTypes.Eof, _currentLineNumber));
         return _tokens;
+    }
+
+    private void ConsumeLtOrLte()
+    {
+        var currentChar = _code[_currentIndex];
+        Debug.Assert(currentChar == '<');
+        
+        var nextChar = GetNextChar();
+        AddToken(nextChar == '=' ? TokenTypes.Lte : TokenTypes.Lt);
+        GetNextChar();
+    }
+
+    private void ConsumeGtOrGte()
+    {
+        var currentChar = _code[_currentIndex];
+        Debug.Assert(currentChar == '>');
+        
+        var nextChar = GetNextChar();
+        AddToken(nextChar == '=' ? TokenTypes.Gte : TokenTypes.Gt);
+        GetNextChar();
+    }
+
+    private void ConsumeAssignOrEqual()
+    {
+        var currentChar = _code[_currentIndex];
+        Debug.Assert(currentChar == '=');
+        
+        var nextChar = GetNextChar();
+        AddToken(nextChar == '=' ? TokenTypes.Eq : TokenTypes.Assign);
+        GetNextChar();
     }
 
     private void ConsumeSingleCharToken(TokenTypes tokenTypes)
@@ -92,6 +131,9 @@ class Lexer
             case "fn":
                 AddToken(TokenTypes.Fn);
                 return;
+            case "if":
+                AddToken(TokenTypes.If);
+                return;
         }
         
         AddToken(new Token(TokenTypes.Identifier, str, _currentLineNumber));
@@ -112,21 +154,18 @@ class Lexer
         AddToken(TokenTypes.String, str);
     }
 
-
     private void LexIntValue()
     {
         var str = "";
         str += _code[_currentIndex];
-        
-        var c = PeekNextChar();
 
         var intValue = 0;
         
         while (int.TryParse(str, out var result))
         {
             intValue = result;
+            var c = GetNextChar();
             str += c;
-            c = GetNextChar();
         }
         
         AddToken(TokenTypes.Int, intValue);
