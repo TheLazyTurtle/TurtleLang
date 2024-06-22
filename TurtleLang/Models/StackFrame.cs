@@ -3,7 +3,7 @@
 class StackFrame
 {
     private readonly Queue<RuntimeValue> _functionArguments = new();
-    private readonly Dictionary<string, RuntimeValue> _runtimeValueByName = new();
+    private readonly Dictionary<string, RuntimeValue> _localsByName = new();
 
     public int ArgumentCount => _functionArguments.Count;
 
@@ -24,19 +24,19 @@ class StackFrame
 
     public void CreateLocalVariable(string variableName, RuntimeValue value)
     {
-        _runtimeValueByName.Add(variableName, value);
+        _localsByName.Add(variableName, value);
     }
 
     public RuntimeValue? GetLocalVariableByName(string name)
     {
-        if (!_runtimeValueByName.ContainsKey(name))
+        if (!_localsByName.ContainsKey(name))
             return null;
         
-        return _runtimeValueByName[name];
+        return _localsByName[name];
     }
 
     public IEnumerable<RuntimeValue> GetAllLocals()
     {
-        return _runtimeValueByName.Values;
+        return _localsByName.Values;
     }
 }

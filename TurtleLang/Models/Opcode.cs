@@ -3,7 +3,7 @@
 enum Opcode
 {
     If,
-    Identifier,
+    Variable,
     Value,
     Expression,
     FunctionDefinition,

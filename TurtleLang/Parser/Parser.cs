@@ -154,6 +154,9 @@ class Parser
         
         ExpectConditionOperator();
         var conditionOperator = _currentToken;
+        
+        // TODO: Add checks to prevent gt, gte, lt & lte on strings
+        
         ExpectIdentifierOrValue();
         var rightToken = _currentToken;
         var rightAst = ParseIdentifierOrValueTokenToValueAst(rightToken);
@@ -161,11 +164,11 @@ class Parser
         return new ExpressionAstNode(leftAst, rightAst, conditionOperator.TokenType.TokenExpressionTypeToExpressionType(), parentToken);
     }
 
-    private ValueAstNode ParseIdentifierOrValueTokenToValueAst(Token token)
+    private AstNode ParseIdentifierOrValueTokenToValueAst(Token token)
     {
         if (token.TokenType == TokenTypes.Identifier)
         {
-            return new ValueAstNode(Opcode.Identifier, token, BuildInTypes.Any);
+            return new VariableAstNode(token);
         }
         
         if (token.TokenType == TokenTypes.Int)

@@ -68,8 +68,114 @@ class Runner
 
     private void HandleIfStatement(AstNode node)
     {
+        InternalLogger.Log("Handling if statement");
+        if (node is not IfAstNode ifAstNode)
+        {
+            InterpreterErrorLogger.LogError("Node was not if node");
+            return;
+        }
+
+        var expression = ifAstNode.Expression;
+        var solved = SolveExpression(expression);
+        
+        if (!solved)
+            return;
+
+        var children = ifAstNode.GetChildren();
+        if (children == null)
+            return;
+                
+        foreach (var child in children)
+        {
+            ExecuteNode(child);
+        }
     }
 
+    private bool SolveExpression(ExpressionAstNode expressionAstNode)
+    {
+        var leftRuntimeValue = GetRuntimeValueForExpressionHand(expressionAstNode.Left);
+        var rightRuntimeValue = GetRuntimeValueForExpressionHand(expressionAstNode.Right);
+
+        if (leftRuntimeValue == null || rightRuntimeValue == null)
+        {
+            InterpreterErrorLogger.LogError("One of the variables in expression is null.");
+            return false;
+        }
+
+        if (leftRuntimeValue.Type != rightRuntimeValue.Type)
+        {
+            InterpreterErrorLogger.LogError("Types do not match in expression");
+            return false;
+        }
+
+        if (leftRuntimeValue.Type == BuildInTypes.Int)
+            return CompareIntValues(leftRuntimeValue.GetValueAsInt(), rightRuntimeValue.GetValueAsInt(), expressionAstNode.ExpressionType);
+
+        if (leftRuntimeValue.Type == BuildInTypes.Any)
+        {
+            Debug.Assert(false);
+        }
+
+        // Make string comparer
+        return CompareStringValues(leftRuntimeValue.GetValueAsString(), rightRuntimeValue.GetValueAsString(), expressionAstNode.ExpressionType);
+    }
+    
+    private bool CompareIntValues(int left, int right, ExpressionTypes expressionType)
+    {
+        return expressionType switch
+        {
+            ExpressionTypes.Eq => left == right,
+            ExpressionTypes.Gt => left > right,
+            ExpressionTypes.Gte => left >= right,
+            ExpressionTypes.Lt => left < right,
+            ExpressionTypes.Lte => left <= right,
+            var _ => throw new ArgumentOutOfRangeException()
+        };
+    }
+
+    private bool CompareStringValues(string left, string right, ExpressionTypes expressionType)
+    {
+        switch (expressionType)
+        {
+            case ExpressionTypes.Eq:
+                return left == right;
+            case ExpressionTypes.Gt:
+            case ExpressionTypes.Gte:
+            case ExpressionTypes.Lt:
+            case ExpressionTypes.Lte:
+                InterpreterErrorLogger.LogError($"String does int implement {expressionType}");
+                return false;
+            case var _:
+                throw new ArgumentOutOfRangeException();
+        }
+    }
+
+    private RuntimeValue? GetRuntimeValueForExpressionHand(AstNode node)
+    {
+        if (node is VariableAstNode variableNode)
+        {
+            var stackFrame = _stack.Peek();
+            return stackFrame.GetLocalVariableByName(variableNode.GetValueAsString()!);
+        }
+
+        if (node is ValueAstNode valueNode)
+        {
+            switch (valueNode.Type)
+            {
+                case BuildInTypes.Int:
+                    return new RuntimeValue(valueNode.Type, valueNode.GetValueAsInt()!);
+                case BuildInTypes.String:
+                    return new RuntimeValue(valueNode.Type, valueNode.GetValueAsString()!);
+                case BuildInTypes.Any:
+                default:
+                    Debug.Assert(false);
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        return null;
+    }
+    
     private void HandleLoadArgument(AstNode node)
     {
         var stackFrame = _stack.Peek();
@@ -90,7 +196,7 @@ class Runner
         var intValue = node.GetValueAsInt();
         if (intValue != null)
         {
-            _stackFrameBeingBuild.AddArgument(new RuntimeValue(PrimitiveTypes.Int, intValue));
+            _stackFrameBeingBuild.AddArgument(new RuntimeValue(BuildInTypes.Int, intValue));
             InternalLogger.Log($"Adding int value of: {node.GetValueAsInt()} to stackframe");
             return;
         }
@@ -98,7 +204,7 @@ class Runner
         // Handle string as input
         if (node is ValueAstNode argNode)
         {
-            _stackFrameBeingBuild.AddArgument(new RuntimeValue(PrimitiveTypes.String, argNode.GetValueAsString()!));
+            _stackFrameBeingBuild.AddArgument(new RuntimeValue(BuildInTypes.String, argNode.GetValueAsString()!));
             
             InternalLogger.Log($"Adding string value of: {argNode.GetValueAsString()} to stackframe");
             return;
@@ -148,20 +254,6 @@ class Runner
         if (functionDefinition is not BuildInFunctionAstNode buildInFunctionNode) 
             return;
         buildInFunctionNode.Handler(node);
-    }
-
-    private void PushStackFrame(StackFrame stackFrame)
-    {
-        if (stackFrame.ArgumentCount != 0)
-        {
-            _stack.Push(stackFrame);
-            InternalLogger.Log("Pushed stackframe");
-            return;
-        }
-
-        // We always need a stackframe, so if there is non just push an empty one
-        _stack.Push(new StackFrame());
-        InternalLogger.Log("Pushed empty stackframe");
     }
 
     public void LoadBuildInFunctions()
