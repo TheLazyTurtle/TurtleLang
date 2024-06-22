@@ -6,7 +6,8 @@ class AstNode
 {
     public List<AstNode> Children { get; private set; } = new();
     public Opcode Opcode { get; }
-    public string Value { get; }
+    private object _value;
+    // public string Value { get; }
     public int LineNumber { get; }
 
     public AstNode(Opcode opcode, Token? token)
@@ -14,12 +15,16 @@ class AstNode
         Opcode = opcode;
         if (token == null)
         {
-            Value = "";
+            _value = "";
             LineNumber = 0;
         }
         else
         {
-            Value = token.Value;
+            if (token.TokenType == TokenTypes.Int)
+                _value = token.GetValueAsInt();
+            else 
+                _value = token.GetValueAsString();
+            
             LineNumber = token.LineNumber;
         }
     }
@@ -31,7 +36,29 @@ class AstNode
 
     public override string ToString()
     {
-        return $"{Opcode.ToString()} {Value}";
+        if (_value is string s)
+            return $"{Opcode.ToString()} {s}";
+        
+        if (_value is int i)
+            return $"{Opcode.ToString()} {i}";
+
+        return Opcode.ToString();
+    }
+
+    public int? GetValueAsInt()
+    {
+        if (_value is int i)
+            return i;
+
+        return null;
+    }
+
+    public string? GetValueAsString()
+    {
+        if (_value is string s)
+            return s;
+
+        return null;
     }
 
     public string ToString(int depth)
@@ -39,8 +66,10 @@ class AstNode
         var sb = new StringBuilder();
         var padding = new string(' ', depth * 2); // Double spaces
 
-        if (!string.IsNullOrEmpty(Value))
-            sb.AppendLine($"{padding}{Opcode.ToString()}: {Value}");
+        if (_value is string)
+            sb.AppendLine($"{padding}{Opcode.ToString()}: {GetValueAsString()}");
+        else if (_value is int)
+            sb.AppendLine($"{padding}{Opcode.ToString()}: {GetValueAsInt()}");
         else
             sb.AppendLine($"{padding}{Opcode.ToString()}");
 

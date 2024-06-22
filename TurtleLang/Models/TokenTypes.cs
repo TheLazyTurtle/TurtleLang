@@ -10,6 +10,7 @@ public enum TokenTypes
     RCurly,
     Semicolon,
     String,
+    Int,
     Comma,
     Eof,
 }

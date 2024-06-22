@@ -34,6 +34,12 @@ class Lexer
             }
             
             _currentString = $"{_currentString}{currentChar}";
+
+            if (int.TryParse(_currentString, out var _))
+            {
+                LexIntValue();
+                continue;
+            }
             
             var token = CheckToken(_currentString, out var success);
 
@@ -101,6 +107,26 @@ class Lexer
         AddToken(TokenTypes.String, str);
     }
 
+
+    private void LexIntValue()
+    {
+        var str = "";
+        str += _code[_currentIndex];
+        
+        var c = PeekNextChar();
+
+        var intValue = 0;
+        
+        while (int.TryParse(str, out var result))
+        {
+            intValue = result;
+            str += c;
+            c = GetNextChar();
+        }
+        
+        AddToken(TokenTypes.Int, intValue);
+    }
+
     private char? PeekNextChar()
     {
         if (_currentIndex + 1 >= _code.Length)
@@ -118,6 +144,12 @@ class Lexer
     }
 
     private void AddToken(TokenTypes type, string value)
+    {
+        var token = new Token(type, value, _currentLineNumber);
+        AddToken(token);
+    }
+    
+    private void AddToken(TokenTypes type, int value)
     {
         var token = new Token(type, value, _currentLineNumber);
         AddToken(token);

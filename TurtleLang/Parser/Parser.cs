@@ -119,7 +119,7 @@ class Parser
         {
             if (_currentToken.TokenType == TokenTypes.Identifier)
             {
-                funcDef.AddArgument(_currentToken.Value);
+                funcDef.AddArgument(_currentToken.GetValueAsString());
                 funcDef.AddChild(new AstNode(Opcode.LoadArgument, _currentToken));
                 ExpectEither(TokenTypes.Comma, TokenTypes.RParen);
             }
@@ -138,13 +138,17 @@ class Parser
         {
             if (_currentToken.TokenType == TokenTypes.Identifier)
             {
-                // TODO: One day we can choose to make it push values and parameters differently on compile time and not runtime
                 parentNode.AddChild(new AstNode(Opcode.AddArgument, _currentToken));
                 ExpectEither(TokenTypes.Comma, TokenTypes.RParen);
             }
             else if (_currentToken.TokenType == TokenTypes.String)
             {
                 parentNode.AddChild(new ArgumentAstNode(Opcode.AddArgument, _currentToken, new BuildInString()));
+                ExpectEither(TokenTypes.Comma, TokenTypes.RParen);
+            }
+            else if (_currentToken.TokenType == TokenTypes.Int)
+            {
+                parentNode.AddChild(new ArgumentAstNode(Opcode.AddArgument, _currentToken, new BuildInInt()));
                 ExpectEither(TokenTypes.Comma, TokenTypes.RParen);
             }
             else
@@ -197,9 +201,9 @@ class Parser
     private void DefineFunction(AstNode node)
     {
         // TODO: Make sure that we cannot redefine a builtin function
-        if (FunctionDefinitions.Contains(node.Value))
-            InterpreterErrorLogger.LogError($"Redefinition of function with name: {node.Value}", _currentToken);
+        if (FunctionDefinitions.Contains(node.GetValueAsString()))
+            InterpreterErrorLogger.LogError($"Redefinition of function with name: {node.GetValueAsString()}", _currentToken);
         
-        FunctionDefinitions.Add(node.Value, node);
+        FunctionDefinitions.Add(node.GetValueAsString(), node);
     }
 }

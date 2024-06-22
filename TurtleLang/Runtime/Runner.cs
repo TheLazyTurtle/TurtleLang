@@ -15,7 +15,7 @@ class Runner
     {
         var callMain = ast.Children.FirstOrDefault();
         Debug.Assert(callMain != null);
-        Debug.Assert(callMain.Value == "Main");
+        Debug.Assert(callMain.GetValueAsString() == "Main");
         _stack.Push(new StackFrame());
         ExecuteNode(callMain);
         
@@ -60,7 +60,7 @@ class Runner
         if (!stackFrame.HasArguments())
             return;
         
-        var argumentName = node.Value;
+        var argumentName = node.GetValueAsString();
         stackFrame.CreateLocalVariable(argumentName, stackFrame.GetArgument());
         
         InternalLogger.Log($"Method now has access to argument: {argumentName} with value: {stackFrame.GetLocalVariableByName(argumentName)}");
@@ -71,19 +71,20 @@ class Runner
         _stackFrameBeingBuild ??= new StackFrame();
         
         // It is an int it can never be an variable
-        if (int.TryParse(node.Value, out var number))
+        var intValue = node.GetValueAsInt();
+        if (intValue != null)
         {
-            _stackFrameBeingBuild.AddArgument(new RuntimeValue(PrimitiveTypes.Int, number));
-            InternalLogger.Log($"Adding int value of: {node.Value} to stackframe");
+            _stackFrameBeingBuild.AddArgument(new RuntimeValue(PrimitiveTypes.Int, intValue));
+            InternalLogger.Log($"Adding int value of: {node.GetValueAsString()} to stackframe");
             return;
         }
 
         // Handle string as input
         if (node is ArgumentAstNode argNode)
         {
-            _stackFrameBeingBuild.AddArgument(new RuntimeValue(PrimitiveTypes.String, argNode.Value));
+            _stackFrameBeingBuild.AddArgument(new RuntimeValue(PrimitiveTypes.String, argNode.GetValueAsString()!));
             
-            InternalLogger.Log($"Adding string value of: {argNode.Value} to stackframe");
+            InternalLogger.Log($"Adding string value of: {argNode.GetValueAsString()} to stackframe");
             return;
         }
         
@@ -91,9 +92,9 @@ class Runner
         var currentFunctionStackFrame = _stack.Peek();
 
         // The current functions stackframe contains a local with this name so we can use this value.
-        var localVariable = currentFunctionStackFrame.GetLocalVariableByName(node.Value);
+        var localVariable = currentFunctionStackFrame.GetLocalVariableByName(node.GetValueAsString()!);
         if (localVariable == null)
-            InterpreterErrorLogger.LogError($"Variable {node.Value} does not exist", node);
+            InterpreterErrorLogger.LogError($"Variable {node.GetValueAsString()} does not exist", node);
         
         // We make a new one so we pass by value and not by reference. As these things are not objects they should not be passed as reference
         _stackFrameBeingBuild.AddArgument(new RuntimeValue(localVariable.Type, localVariable.Value));
@@ -111,7 +112,7 @@ class Runner
     {
         var stackFrame = _stack.Peek();
 
-        var functionDefinition = FunctionDefinitions.Get(node.Value);
+        var functionDefinition = FunctionDefinitions.Get(node.GetValueAsString());
 
         if (functionDefinition is FunctionDefinitionAstNode functionNode)
         {
@@ -123,7 +124,7 @@ class Runner
             if (stackFrame.ArgumentCount < functionNode.ArgumentCount)
                 InterpreterErrorLogger.LogError("To few arguments given for function", node);
             
-            InternalLogger.Log($"Executing function: {node.Value}");
+            InternalLogger.Log($"Executing function: {node.GetValueAsString()}");
             ExecuteNode(functionNode);
             return;
         }

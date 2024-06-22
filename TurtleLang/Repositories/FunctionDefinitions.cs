@@ -31,7 +31,7 @@ static class FunctionDefinitions
         }
         else
         {
-            InterpreterErrorLogger.LogError($"Redefinition of function with name: {node.Value}");
+            InterpreterErrorLogger.LogError($"Redefinition of function with name: {node.GetValueAsString()}");
         }
     }
 

@@ -11,7 +11,7 @@ abstract class Program
     static void Main(string[] args)
     {
         var code = File.ReadAllText("Examples/Main.tl");
-        InternalLogger.IsLoggingEnabled = true;
+        InternalLogger.IsLoggingEnabled = false;
         var tokens = Lexer.Lex(code);
 
         InternalLogger.Log("================ Lexer ================");

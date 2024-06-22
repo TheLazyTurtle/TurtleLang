@@ -21,7 +21,7 @@ class FunctionDefinitionAstNode: AstNode
     {
         var sb = new StringBuilder();
         sb.AppendLine("=========================");
-        sb.Append(Value);
+        sb.Append(GetValueAsString());
 
         if (Arguments != null)
             sb.AppendLine($"({string.Join(',', Arguments)})");
