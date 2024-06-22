@@ -1,5 +1,4 @@
 ﻿using System.Text;
-using TurtleLang.Models.Scopes;
 
 namespace TurtleLang.Models.Ast;
 
@@ -7,14 +6,6 @@ class ElseAstNode: ScopeableAstNode
 {
     public ElseAstNode(Token? token) : base(Opcode.Else, token)
     {
-    }
-    
-    public void AddScope(IfScope scope)
-    {
-        if (Scope != null)
-            InterpreterErrorLogger.LogError("Function already had an scope");
-
-        Scope = scope;
     }
 
     public new string ToString(int depth)
@@ -26,13 +17,13 @@ class ElseAstNode: ScopeableAstNode
         sb.Append($"{padding}else");
 
         depth++;
-        if (Scope == null)
+        if (Children.Count == 0)
             return sb.ToString();
 
         sb.Append($"\n{padding}");
         sb.AppendLine("{");
         
-        foreach (var child in Scope.Children)
+        foreach (var child in Children)
         {
             sb.Append($"{child.ToString(depth)}");
             if (child.Opcode is Opcode.Return)

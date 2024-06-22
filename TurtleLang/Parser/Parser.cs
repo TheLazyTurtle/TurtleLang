@@ -2,7 +2,6 @@
 using TurtleLang.Models;
 using TurtleLang.Models.Ast;
 using TurtleLang.Models.Exceptions;
-using TurtleLang.Models.Scopes;
 using TurtleLang.Repositories;
 
 namespace TurtleLang.Parser;
@@ -52,8 +51,6 @@ class Parser
                 
                 Expect(TokenTypes.Identifier);
                 var functionDefinition = new FunctionDefinitionAstNode(Opcode.FunctionDefinition, _currentToken);
-                var functionScope = new FunctionScope();
-                functionDefinition.AddScope(functionScope);
                 
                 DefineFunction(functionDefinition);
                 _ast.AddChild(functionDefinition);
@@ -148,8 +145,6 @@ class Parser
         }
 
         var elseNode = new ElseAstNode(elseToken);
-        var elseScope = new IfScope();
-        elseNode.AddScope(elseScope);
         ifNode.AddElse(elseNode);
         _parents.Pop(); // Remove the if
         _parents.Push(elseNode);
@@ -162,8 +157,6 @@ class Parser
         var expression = ParseConditionExpression();
         Expect(TokenTypes.RParen);
         var ifNode = new IfAstNode(expression, ifToken);
-        var ifScope = new IfScope();
-        ifNode.AddScope(ifScope);
 
         if (_parents.Peek() is not ScopeableAstNode scopeableParent)
             return;

@@ -83,11 +83,10 @@ class Runner
         // Handle else branch
         if (!solved)
         {
-            var elseScope = ifAstNode.Else?.Scope;
-            if (elseScope == null)
+            if (ifAstNode.Else == null)
                 return;
                     
-            foreach (var child in elseScope.Children)
+            foreach (var child in ifAstNode.Else.Children)
             {
                 ExecuteNode(child);
             }
@@ -95,10 +94,7 @@ class Runner
         }
 
         // Handle if branch
-        var children = ifAstNode.GetChildren();
-        if (children == null)
-            return;
-                
+        var children = ifAstNode.Children;
         foreach (var child in children)
         {
             ExecuteNode(child);

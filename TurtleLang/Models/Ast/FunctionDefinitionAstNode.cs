@@ -1,5 +1,4 @@
 ﻿using System.Text;
-using TurtleLang.Models.Scopes;
 
 namespace TurtleLang.Models.Ast;
 
@@ -10,14 +9,6 @@ class FunctionDefinitionAstNode: ScopeableAstNode
     
     public FunctionDefinitionAstNode(Opcode opcode, Token? token) : base(opcode, token)
     {
-    }
-    
-    public void AddScope(FunctionScope scope)
-    {
-        if (Scope != null)
-            InterpreterErrorLogger.LogError("Function already had an scope");
-
-        Scope = scope;
     }
 
     public void AddArgument(string identifier)
@@ -37,11 +28,11 @@ class FunctionDefinitionAstNode: ScopeableAstNode
         else
             sb.AppendLine("()");
 
-        if (Scope == null) 
+        if (Children.Count == 0) 
             return sb.ToString();
         
         sb.AppendLine("{");
-        foreach (var child in Scope.Children)
+        foreach (var child in Children)
         {
             if (child is IfAstNode ifNode)
                 sb.AppendLine($"{ifNode.ToString(1)}");
