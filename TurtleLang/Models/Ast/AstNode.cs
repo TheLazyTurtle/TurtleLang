@@ -66,12 +66,21 @@ class AstNode
         var sb = new StringBuilder();
         var padding = new string(' ', depth * 2); // Double spaces
 
-        if (_value is string)
-            sb.AppendLine($"{padding}{Opcode.ToString()}: {GetValueAsString()}");
+        if (_value is string s)
+        {
+            if (!string.IsNullOrEmpty(s))
+                sb.AppendLine($"{padding}{Opcode.ToString()}: {GetValueAsString()}");
+            else
+                sb.AppendLine($"{padding}{Opcode.ToString()}");
+        }
         else if (_value is int)
+        {
             sb.AppendLine($"{padding}{Opcode.ToString()}: {GetValueAsInt()}");
+        }
         else
+        {
             sb.AppendLine($"{padding}{Opcode.ToString()}");
+        }
 
         depth++;
         foreach (var child in Children)

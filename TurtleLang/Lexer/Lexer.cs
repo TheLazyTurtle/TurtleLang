@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using TurtleLang.Models;
+using TurtleLang.Models.Ast;
 
 namespace TurtleLang.Lexer;
 
@@ -7,7 +8,6 @@ class Lexer
 {
     private string _code = string.Empty;
     private int _currentIndex;
-    private string _currentString = string.Empty;
     private int _currentLineNumber = 1; // 1 because a code file starts at line 1 not 0
     private readonly List<Token> _tokens = new();
     
@@ -26,70 +26,75 @@ class Lexer
                 _currentIndex++;
                 continue;
             }
-
-            if (currentChar == '\"')
-            {
-                LexStringValue();
-                continue;
-            }
             
-            _currentString = $"{_currentString}{currentChar}";
-
-            if (int.TryParse(_currentString, out var _))
+            if (char.IsDigit(currentChar))
             {
                 LexIntValue();
                 continue;
             }
-            
-            var token = CheckToken(_currentString, out var success);
 
-            if (success)
+            switch (currentChar)
             {
-                Debug.Assert(token != null);
-                
-                AddToken(token);
+                case '\"':
+                    LexStringValue();
+                    continue;
+                case '(':
+                    ConsumeSingleCharToken(TokenTypes.LParen);
+                    continue;
+                case ')':
+                    ConsumeSingleCharToken(TokenTypes.RParen);
+                    continue;
+                case '{':
+                    ConsumeSingleCharToken(TokenTypes.LCurly);
+                    continue;
+                case '}':
+                    ConsumeSingleCharToken(TokenTypes.RCurly);
+                    continue;
+                case ';':
+                    ConsumeSingleCharToken(TokenTypes.Semicolon);
+                    continue;
+                case ',':
+                    ConsumeSingleCharToken(TokenTypes.Comma);
+                    continue;
             }
             
-            var nextChar = PeekNextChar();
-            _ = CheckToken(nextChar.ToString() ?? "", out success);
-
-            if ((nextChar == ' ' || success) && _currentString.Length > 0)
-            {
-                AddToken(TokenTypes.Identifier, _currentString);
-            }
-            
-            if (nextChar == null)
-                break;
-            _currentIndex++;
+            GetIdentifierOrKeyword();
         }
         
         _tokens.Add(new Token(TokenTypes.Eof, _currentLineNumber));
         return _tokens;
     }
-    
-    private Token? CheckToken(string token, out bool success)
+
+    private void ConsumeSingleCharToken(TokenTypes tokenTypes)
     {
-        success = true;
-        switch (token)
+        AddToken(tokenTypes);
+        _ = GetNextChar();
+    }
+    
+    private void GetIdentifierOrKeyword()
+    {
+        var currentChar = _code[_currentIndex];
+        var str = "";
+
+        while (char.IsLetterOrDigit(currentChar))
+        {
+            str += currentChar;
+            
+            var nextChar = GetNextChar();
+            if (nextChar == null)
+                break;
+            
+            currentChar = _code[_currentIndex];
+        }
+
+        switch (str)
         {
             case "fn":
-                return new Token(TokenTypes.Fn, _currentLineNumber);
-            case "(":
-                return new Token(TokenTypes.LParen, _currentLineNumber);
-            case ")":
-                return new Token(TokenTypes.RParen, _currentLineNumber);
-            case "{":
-                return new Token(TokenTypes.LCurly, _currentLineNumber);
-            case "}":
-                return new Token(TokenTypes.RCurly, _currentLineNumber);
-            case ";":
-                return new Token(TokenTypes.Semicolon, _currentLineNumber);
-            case ",":
-                return new Token(TokenTypes.Comma, _currentLineNumber);
-            default:
-                success = false;
-                return null;
+                AddToken(TokenTypes.Fn);
+                return;
         }
+        
+        AddToken(new Token(TokenTypes.Identifier, str, _currentLineNumber));
     }
     
     private void LexStringValue()
@@ -164,6 +169,5 @@ class Lexer
     private void AddToken(Token token)
     {
         _tokens.Add(token);
-        _currentString = "";
     }
 }
