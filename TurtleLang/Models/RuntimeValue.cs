@@ -5,7 +5,7 @@ namespace TurtleLang.Models;
 class RuntimeValue
 {
     public BuildInTypes Type { get; init; }
-    public object Value { get; init; }
+    public object Value { get; private set; }
 
     public RuntimeValue(BuildInTypes type, object value)
     {
@@ -21,6 +21,16 @@ class RuntimeValue
     public string GetValueAsString()
     {
         return (string)Value;
+    }
+
+    public void SetValueAsInt(int newValue)
+    {
+        Value = newValue;
+    }
+
+    public void SetValueAsString(string newValue)
+    {
+        Value = newValue;
     }
 
     public override string ToString()

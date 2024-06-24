@@ -4,6 +4,7 @@ class StackFrame
 {
     private readonly Queue<RuntimeValue> _functionArguments = new();
     private readonly Dictionary<string, RuntimeValue> _localsByName = new();
+    public required StackFrameTypes StackFrameType { get; init; }
 
     public int ArgumentCount => _functionArguments.Count;
 

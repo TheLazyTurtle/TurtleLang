@@ -114,8 +114,7 @@ class Parser
         var valueAst = new ValueAstNode(Opcode.Value, value, value.TokenType.TokenTypeToBuildInType());
         Expect(TokenTypes.Semicolon);
 
-        scopeableAstNode.AddChild(new AstNode(Opcode.PushLocalVar, identifier));
-        scopeableAstNode.AddChild(new ExpressionAstNode(identifierAst, valueAst, ExpressionTypes.Assign, identifier));
+        forAstNode.AddInitializer(new ExpressionAstNode(identifierAst, valueAst, ExpressionTypes.Assign, identifier));
 
         // Read the expr
         var expression = ParseConditionExpression();
@@ -130,7 +129,7 @@ class Parser
         ExpectEither(TokenTypes.Increase, TokenTypes.Decrease);
         var operation = _currentToken;
         var expressionType = operation.TokenType == TokenTypes.Increase ? ExpressionTypes.Increase : ExpressionTypes.Decrease;
-        forAstNode.AddChild(new ExpressionAstNode(operationIdentifierAstNode, expressionType, operationIdentifier));
+        forAstNode.AddIncrementExpression(new ExpressionAstNode(operationIdentifierAstNode, expressionType, operationIdentifier));
         
         scopeableAstNode.AddChild(forAstNode);
         _parents.Push(forAstNode);

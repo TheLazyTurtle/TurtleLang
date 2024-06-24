@@ -12,7 +12,6 @@ enum Opcode
     Call,
     LoadArgument,
     AddArgument,
-    PushLocalVar,
     PushStackFrame,
     Return,
     Eof

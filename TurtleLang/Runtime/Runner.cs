@@ -8,7 +8,8 @@ namespace TurtleLang.Runtime;
 
 class Runner
 {
-    private readonly Stack<StackFrame> _stack = new();
+    // private readonly Stack<StackFrame> _stack = new();
+    private readonly RuntimeStack _stack = new();
     private StackFrame? _stackFrameBeingBuild;
     
     public void Run(AstTree ast)
@@ -16,7 +17,10 @@ class Runner
         var callMain = ast.Children.FirstOrDefault();
         Debug.Assert(callMain != null);
         Debug.Assert(callMain.GetValueAsString() == "Main");
-        _stack.Push(new StackFrame());
+        _stack.Push(new StackFrame
+        {
+            StackFrameType = StackFrameTypes.Global
+        });
         ExecuteNode(callMain);
         
         Debug.Assert(_stack.Count == 0);
@@ -47,6 +51,9 @@ class Runner
             case Opcode.Else:
                 Debug.Assert(false, "This should not happen as else should be handled by if");
                 return;
+            case Opcode.For:
+                HandleFor(node);
+                return;
             case Opcode.PushStackFrame:
                 _stack.Push(_stackFrameBeingBuild!);
                 InternalLogger.Log("Pushed stackframe");
@@ -66,6 +73,57 @@ class Runner
         {
             ExecuteNode(child);
         }
+    }
+
+    private void HandleFor(AstNode node)
+    {
+        if (node is not ForAstNode forNode)
+            return;
+        
+        var stackFrame = new StackFrame
+        {
+            StackFrameType = StackFrameTypes.LocalScope
+        };
+        _stack.Push(stackFrame);
+
+        if (forNode.Initializer == null)
+            return;
+        
+        stackFrame.CreateLocalVariable(forNode.Initializer.Left.GetValueAsString()!, new RuntimeValue(BuildInTypes.Int, forNode.Initializer.Right!.GetValueAsInt()!));
+        Console.WriteLine($"Creating local variable with name: {forNode.Initializer.Left.GetValueAsString()!} with value: {forNode.Initializer.Right!.GetValueAsInt()}");
+
+        if (forNode.Expression == null)
+            return;
+
+        if (forNode.IncrementExpression == null)
+            return;
+
+        while (SolveExpression(forNode.Expression))
+        {
+            foreach (var child in forNode.Children)
+            {
+                ExecuteNode(child);
+            }
+            HandleIncrementOrDecrement(forNode.IncrementExpression);
+        }
+
+        _stack.Pop();
+    }
+    
+    private void HandleIncrementOrDecrement(ExpressionAstNode node)
+    {
+        var leftRuntimeValue = GetRuntimeValueForExpressionHand(node.Left);
+        if (leftRuntimeValue == null)
+        {
+            InterpreterErrorLogger.LogError($"Variable of {node.Left.GetValueAsString()} does not exist in scope");
+            return;
+        }
+            
+        Debug.Assert(node.ExpressionType is ExpressionTypes.Increase or ExpressionTypes.Decrease);
+        Debug.Assert(leftRuntimeValue.Type == BuildInTypes.Int);
+
+        var currentValue = leftRuntimeValue.GetValueAsInt();
+        leftRuntimeValue.SetValueAsInt(currentValue + 1);
     }
 
     private void HandleIfStatement(AstNode node)
@@ -164,7 +222,15 @@ class Runner
     {
         if (node is VariableAstNode variableNode)
         {
-            var stackFrame = _stack.Peek();
+            var count = 0;
+            var stackFrame = _stack.PeekAtIndex(count);
+            while (stackFrame.GetLocalVariableByName(variableNode.GetValueAsString()!) == null)
+            {
+                stackFrame = _stack.PeekAtIndex(++count);
+                
+                if (stackFrame.StackFrameType == StackFrameTypes.Function)
+                    break;
+            }
             return stackFrame.GetLocalVariableByName(variableNode.GetValueAsString()!);
         }
 
@@ -200,7 +266,10 @@ class Runner
 
     private void HandleAddArgument(AstNode node)
     {
-        _stackFrameBeingBuild ??= new StackFrame();
+        _stackFrameBeingBuild ??= new StackFrame
+        {
+            StackFrameType = StackFrameTypes.Function
+        };
         
         // It is an int it can never be an variable
         var intValue = node.GetValueAsInt();
