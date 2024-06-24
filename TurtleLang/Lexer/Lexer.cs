@@ -53,6 +53,9 @@ class Lexer
                 case ';':
                     ConsumeSingleCharToken(TokenTypes.Semicolon);
                     continue;
+                case ':':
+                    ConsumeSingleCharToken(TokenTypes.Colon);
+                    continue;
                 case ',':
                     ConsumeSingleCharToken(TokenTypes.Comma);
                     continue;

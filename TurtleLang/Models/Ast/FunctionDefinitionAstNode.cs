@@ -2,19 +2,36 @@
 
 namespace TurtleLang.Models.Ast;
 
+class Argument
+{
+    public string Name { get; }
+    public BuildInTypes Type { get; }
+
+    public Argument(string name, BuildInTypes type)
+    {
+        Name = name;
+        Type = type;
+    }
+
+    public override string ToString()
+    {
+        return $"{Name}: {Type}";
+    }
+}
+
 class FunctionDefinitionAstNode: ScopeableAstNode
 {
-    public List<string>? Arguments { get; set; }
+    public List<Argument>? Arguments { get; set; }
     public int ArgumentCount => Arguments?.Count ?? 0;
     
     public FunctionDefinitionAstNode(Opcode opcode, Token? token) : base(opcode, token)
     {
     }
 
-    public void AddArgument(string identifier)
+    public void AddArgument(Argument value)
     {
-        Arguments ??= new List<string>();
-        Arguments.Add(identifier);
+        Arguments ??= new List<Argument>();
+        Arguments.Add(value);
     }
 
     public override string ToString()

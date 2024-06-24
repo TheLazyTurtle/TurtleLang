@@ -24,6 +24,7 @@ public enum TokenTypes
     LCurly,
     RCurly,
     Semicolon,
+    Colon,
     String,
     Int,
     Comma,

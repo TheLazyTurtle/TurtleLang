@@ -1,32 +1,32 @@
 ﻿using TurtleLang.Runtime;
+using TurtleLang.Semantics;
 
 namespace TurtleLang;
 
 abstract class Program
 {
-    private static Parser.Parser _parser;
-    private static readonly Lexer.Lexer Lexer = new();
-    private static readonly Runner Runner = new();
-    
     static void Main(string[] args)
     {
         var code = File.ReadAllText("Examples/Main.tl");
-        InternalLogger.IsLoggingEnabled = false;
+        InternalLogger.IsLoggingEnabled = true;
         InternalLogger.Log("================ Lexer ================");
-        
-        var tokens = Lexer.Lex(code);
+
+        var lexer = new Lexer.Lexer();
+        var tokens = lexer.Lex(code);
         foreach (var token in tokens)
             InternalLogger.Log(token);
         
         InternalLogger.Log("=============== Parser ===============");
-        _parser = new Parser.Parser(tokens);
-        var ast = _parser.Parse();
+        var parser = new Parser.Parser(tokens);
+        var ast = parser.Parse();
         InternalLogger.Log(ast.ToString());
-        
-        // TODO: Place a function here that validates that all called functions actually exist
-        
-        InternalLogger.Log("=============== Runner ===============");
-        Runner.LoadBuildInFunctions();
-        Runner.Run(ast);
+
+        var semanticParser = new SemanticParser(ast);
+        semanticParser.Validate();
+
+    //     InternalLogger.Log("=============== Runner ===============");
+    //     var runner = new Runner();
+    //     runner.LoadBuildInFunctions();
+    //     runner.Run(ast);
     }
 }

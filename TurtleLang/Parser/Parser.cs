@@ -270,8 +270,15 @@ class Parser
         {
             if (_currentToken.TokenType == TokenTypes.Identifier)
             {
-                funcDef.AddArgument(_currentToken.GetValueAsString());
-                funcDef.AddChild(new AstNode(Opcode.LoadArgument, _currentToken));
+                var identifierNameToken = _currentToken;
+                Expect(TokenTypes.Colon);
+                Expect(TokenTypes.Identifier);
+                var typeName = _currentToken;
+                TypeDefinitions.AddIfNotExists(typeName.GetValueAsString());
+                var type = GetBuildInTypeFromName(typeName.GetValueAsString());
+                
+                funcDef.AddArgument(new Argument(identifierNameToken.GetValueAsString(), type));
+                funcDef.AddChild(new AstNode(Opcode.LoadArgument, identifierNameToken));
                 ExpectEither(TokenTypes.Comma, TokenTypes.RParen);
             }
             else
@@ -280,7 +287,18 @@ class Parser
             }
         }
     }
-    
+
+    private BuildInTypes GetBuildInTypeFromName(string typeName)
+    {
+        if (typeName == "i32")
+            return BuildInTypes.Int;
+
+        if (typeName == "string")
+            return BuildInTypes.String;
+
+        return BuildInTypes.Any;
+    }
+
     private void ParseParameterValues(ScopeableAstNode parentNode)
     {
         GetNextToken();
