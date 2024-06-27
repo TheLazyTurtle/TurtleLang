@@ -7,7 +7,7 @@ fn Second(i: i32) {
 }
 
 fn Third(i: i32) {
-    for (i = 0; i < 100; i++) {
+    for (i = 0; i < 100000; i++) {
         Print(i);
     }
 }

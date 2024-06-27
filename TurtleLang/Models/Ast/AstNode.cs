@@ -6,7 +6,7 @@ class AstNode
 {
     public List<AstNode> Children { get; private set; } = new();
     public Opcode Opcode { get; }
-    private object _value;
+    private readonly object _value;
     public int LineNumber { get; }
 
     public AstNode(Opcode opcode, Token? token)
@@ -63,6 +63,11 @@ class AstNode
             return s;
 
         return null;
+    }
+
+    public object Proxy_GetRawValue()
+    {
+        return _value;
     }
 
     public string ToString(int depth)

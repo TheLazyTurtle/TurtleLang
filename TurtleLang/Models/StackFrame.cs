@@ -13,7 +13,7 @@ class StackFrame
         _functionArguments.Enqueue(value);
     }
 
-    public RuntimeValue GetArgument()
+    public RuntimeValue ConsumeArgument()
     {
         return _functionArguments.Dequeue();
     }
