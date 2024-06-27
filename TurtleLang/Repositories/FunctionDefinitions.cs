@@ -14,10 +14,17 @@ static class FunctionDefinitions
 
     public static bool Contains(string name)
     {
-        return FunctionNodesByName.ContainsKey(name);
+        var result = FunctionNodesByName.TryGetValue(name, out var funcDef);
+
+        return result && funcDef != null;
     }
 
-    public static void Add(string name, AstNode node)
+    public static Dictionary<string, AstNode?> GetAll()
+    {
+        return FunctionNodesByName;
+    }
+
+    public static void Add(string name, AstNode? node)
     {
         if (!FunctionNodesByName.ContainsKey(name))
         {
@@ -27,7 +34,7 @@ static class FunctionDefinitions
 
         if (FunctionNodesByName[name] == null)
         {
-            FunctionNodesByName.Add(name, node);
+            FunctionNodesByName[name] = node;
         }
         else
         {
@@ -39,7 +46,7 @@ static class FunctionDefinitions
     {
         foreach (var node in nodes)
         {
-            FunctionNodesByName.Add(node.Key, node.Value);
+            Add(node.Key, node.Value);
         }
     }
 

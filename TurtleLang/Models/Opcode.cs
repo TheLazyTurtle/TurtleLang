@@ -10,9 +10,6 @@ enum Opcode
     Expression,
     FunctionDefinition,
     Call,
-    LoadArgument,
-    AddArgument,
-    PushStackFrame,
     Return,
     Eof
 }

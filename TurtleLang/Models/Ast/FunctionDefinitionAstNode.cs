@@ -1,13 +1,14 @@
-﻿using System.Text;
+﻿using System.Diagnostics;
+using System.Text;
 
 namespace TurtleLang.Models.Ast;
 
-class Argument
+class VariableDefinition
 {
     public string Name { get; }
     public BuildInTypes Type { get; }
 
-    public Argument(string name, BuildInTypes type)
+    public VariableDefinition(string name, BuildInTypes type)
     {
         Name = name;
         Type = type;
@@ -21,19 +22,29 @@ class Argument
 
 class FunctionDefinitionAstNode: ScopeableAstNode
 {
-    public List<Argument>? Arguments { get; set; }
+    public List<VariableDefinition>? Arguments { get; set; }
     public int ArgumentCount => Arguments?.Count ?? 0;
     
     public FunctionDefinitionAstNode(Opcode opcode, Token? token) : base(opcode, token)
     {
     }
 
-    public void AddArgument(Argument value)
+    public void AddArgument(VariableDefinition value)
     {
-        Arguments ??= new List<Argument>();
+        Arguments ??= new List<VariableDefinition>();
         Arguments.Add(value);
     }
+    
+    public BuildInTypes GetTypeOfArgumentOnIndex(int index)
+    {
+        return Arguments[index].Type;
+    }
 
+    public VariableDefinition? GetArgumentByName(string name)
+    {
+        return Arguments?.FirstOrDefault(x => x.Name == name);
+    }
+    
     public override string ToString()
     {
         var sb = new StringBuilder();
@@ -62,7 +73,6 @@ class FunctionDefinitionAstNode: ScopeableAstNode
         }
 
         sb.AppendLine("}");
-
 
         return sb.ToString();
     }

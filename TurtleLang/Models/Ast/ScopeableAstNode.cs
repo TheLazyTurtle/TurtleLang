@@ -1,19 +1,23 @@
-﻿namespace TurtleLang.Models.Ast;
+﻿using System.Diagnostics;
+
+namespace TurtleLang.Models.Ast;
 
 class ScopeableAstNode : AstNode
 {
-    public List<AstNode> Children { get; private set; } = new();
+    public List<VariableDefinition> Locals { get; } = new();
+    
     public ScopeableAstNode(Opcode opcode, Token? token) : base(opcode, token)
     {
     }
     
-    public void AddChild(AstNode node)
+    public VariableDefinition? GetLocalByName(string name)
     {
-        Children.Add(node);
+        return Locals.FirstOrDefault(x => x.Name == name);
     }
-
-    public IEnumerable<AstNode> GetChildren()
+    
+    public void AddLocal(VariableDefinition variable)
     {
-        return Children;
+        Debug.Assert(Locals.All(x => x.Name != variable.Name));
+        Locals.Add(variable);
     }
 }

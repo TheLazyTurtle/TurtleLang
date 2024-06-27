@@ -4,6 +4,7 @@ namespace TurtleLang.Models;
 
 public enum TokenTypes
 {
+    Var,
     Fn,
     If,
     Else,

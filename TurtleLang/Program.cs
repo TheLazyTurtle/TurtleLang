@@ -21,12 +21,15 @@ abstract class Program
         var ast = parser.Parse();
         InternalLogger.Log(ast.ToString());
 
+        InternalLogger.Log("=============== Loading build in functions ===============");
+        var runner = new Runner();
+        runner.LoadBuildInFunctions();
+        
+        InternalLogger.Log("=============== Semantic parsing ===============");
         var semanticParser = new SemanticParser(ast);
         semanticParser.Validate();
-
-    //     InternalLogger.Log("=============== Runner ===============");
-    //     var runner = new Runner();
-    //     runner.LoadBuildInFunctions();
-    //     runner.Run(ast);
+        
+        InternalLogger.Log("=============== Runner ===============");
+        runner.Run(ast);
     }
 }

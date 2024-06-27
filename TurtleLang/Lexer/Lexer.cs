@@ -170,6 +170,9 @@ class Lexer
             case "for":
                 AddToken(TokenTypes.For);
                 return;
+            case "var":
+                AddToken(TokenTypes.Var);
+                return;
         }
         
         AddToken(new Token(TokenTypes.Identifier, str, _currentLineNumber));

@@ -4,6 +4,7 @@ namespace TurtleLang.Models.Ast;
 
 class AstNode
 {
+    public List<AstNode> Children { get; private set; } = new();
     public Opcode Opcode { get; }
     private object _value;
     public int LineNumber { get; }
@@ -25,6 +26,16 @@ class AstNode
             
             LineNumber = token.LineNumber;
         }
+    }
+    
+    public void AddChild(AstNode node)
+    {
+        Children.Add(node);
+    }
+
+    public IEnumerable<AstNode> GetChildren()
+    {
+        return Children;
     }
     
     public override string ToString()
@@ -73,6 +84,19 @@ class AstNode
         else
         {
             sb.AppendLine($"{padding}{Opcode.ToString()}");
+        }
+
+        depth++;
+        foreach (var child in Children)
+        {
+            if (child is IfAstNode ifNode)
+                sb.AppendLine($"{ifNode.ToString(depth)}");
+            else if (child is ForAstNode forAstNode)
+                sb.AppendLine($"{forAstNode.ToString(depth)}");
+            else if (child is ExpressionAstNode expressionAstNode)
+                sb.AppendLine($"{expressionAstNode.ToString(depth)}");
+            else
+                sb.Append(child.ToString(depth));
         }
 
         return sb.ToString();

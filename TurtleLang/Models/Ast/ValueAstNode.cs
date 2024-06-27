@@ -3,7 +3,12 @@
 class ValueAstNode: AstNode
 {
     public BuildInTypes Type;
-    public ValueAstNode(Opcode opcode, Token? token, BuildInTypes type) : base(opcode, token)
+    public ValueAstNode(Token? token, BuildInTypes type) : base(Opcode.Value, token)
+    {
+        Type = type;
+    }
+    
+    protected ValueAstNode(Opcode opcode, Token? token, BuildInTypes type) : base(opcode, token)
     {
         Type = type;
     }

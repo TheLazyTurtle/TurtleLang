@@ -1,38 +1,38 @@
 ﻿namespace TurtleLang.Models;
 
-class RuntimeStack
+class StackWithIndex<T>
 {
-    private readonly List<StackFrame> _stack = new();
+    private readonly List<T> _stack = new();
     public int Count => _stack.Count;
 
-    public void Push(StackFrame stackFrame)
+    public void Push(T stackFrame)
     {
         _stack.Add(stackFrame);
     }
 
-    public StackFrame Pop()
+    public T Pop()
     {
         var item = _stack.Last();
 
         if (item == null)
-            throw new Exception("Runtime stack was empty");
+            throw new Exception("Stack with index was empty");
         
         _stack.Remove(item);
 
         return item;
     }
 
-    public StackFrame Peek()
+    public T Peek()
     {
         var item = _stack.Last();
 
         if (item == null)
-            throw new Exception("Runtime stack was empty");
+            throw new Exception("Stack with index was empty");
         
         return item;
     }
 
-    public StackFrame PeekAtIndex(int i)
+    public T PeekAtIndex(int i)
     {
         // Because it is a list we have to go through it in reverse
         var length = _stack.Count - 1;
