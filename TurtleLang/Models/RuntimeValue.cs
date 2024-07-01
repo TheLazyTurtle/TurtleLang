@@ -1,11 +1,12 @@
-﻿using TurtleLang.Models.Ast;
+﻿using System.Diagnostics;
+using TurtleLang.Models.Ast;
 
 namespace TurtleLang.Models;
 
 class RuntimeValue
 {
     public BuildInTypes Type { get; init; }
-    public object Value { get; private set; }
+    public object? Value { get; private set; }
 
     public RuntimeValue(BuildInTypes type, object value)
     {
@@ -15,11 +16,13 @@ class RuntimeValue
 
     public int GetValueAsInt()
     {
+        Debug.Assert(Value != null);
         return (int)Value;
     }
 
     public string GetValueAsString()
     {
+        Debug.Assert(Value != null);
         return (string)Value;
     }
 
@@ -33,8 +36,16 @@ class RuntimeValue
         Value = newValue;
     }
 
+    public void Proxy_SetRawValue(object value)
+    {
+        Value = value;
+    }
+
     public override string ToString()
     {
+        if (Value == null)
+            return $"Uninitialized {Type}";
+        
         return Type switch
         {
             BuildInTypes.Int => $"{(int)Value}",

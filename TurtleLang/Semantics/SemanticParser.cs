@@ -18,13 +18,17 @@ class SemanticParser
     {
         var success = false;
         success = ValidateAllVarsHaveTypes();
+        Debug.Assert(success);
+        success = ValidateAllAssignsHaveCorrectType();
+        Debug.Assert(success);
         success = FunctionValidationPass();
+        Debug.Assert(success);
         success = ValidateArguments();
+        Debug.Assert(success);
     }
-
+    
     private bool ValidateAllVarsHaveTypes()
     {
-        var result = true;
         var todo = new Queue<AstNode>();
         
         foreach (var astNode in FunctionDefinitions.GetAll())
@@ -47,8 +51,57 @@ class SemanticParser
                 todo.Enqueue(child);
             }
         }
+
+        return true;
+    }
+
+    private bool ValidateAllAssignsHaveCorrectType()
+    {
+        var todo = new Queue<AstNode>();
         
-        return result;
+        foreach (var astNode in FunctionDefinitions.GetAll())
+        {
+            if (astNode.Value == null)
+                continue;
+            
+            todo.Enqueue(astNode.Value);
+        }
+
+        while (todo.Count > 0)
+        {
+            var current = todo.Dequeue();
+            
+            foreach (var child in current.Children)
+            {
+                todo.Enqueue(child);
+            }
+
+            if (current is not ExpressionAstNode expressionNode)
+                continue;
+
+            var left = expressionNode.Left;
+            var right = expressionNode.Right;
+
+            if (left is not VariableAstNode leftNode)
+            {
+                Debug.Assert(false);
+                return false;
+            }
+
+            if (right is not ValueAstNode rightNode)
+            {
+                Debug.Assert(false);
+                return false;
+            }
+
+            if (leftNode.Type == rightNode.Type) 
+                continue;
+            
+            InterpreterErrorLogger.LogError("Type assigned does not match type for variable", expressionNode);
+            return false;
+        }
+
+        return true;
     }
     
     // Validates that every called function has an impl

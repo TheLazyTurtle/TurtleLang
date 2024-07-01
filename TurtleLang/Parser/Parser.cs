@@ -10,7 +10,7 @@ class Parser
 {
     private readonly AstTree _ast = new();
     private List<Token> _tokens;
-    private StackWithIndex<AstNode> _parents = new();
+    private StackWithIndex<ScopeableAstNode> _parents = new();
     private Token _currentToken;
     private int _currentIndex;
     private int _curlyCount;
@@ -73,6 +73,7 @@ class Parser
                     _parents.Pop();
                 break;
             case TokenTypes.String:
+            case TokenTypes.Int:
                 GetNextToken(); // Just skip it as it has no meaning
                 break;
             case TokenTypes.Comma:
@@ -99,8 +100,44 @@ class Parser
     private void ParseVarDeclaration()
     {
         Expect(TokenTypes.Identifier);
+        var identifierToken = _currentToken;
+        
         Expect(TokenTypes.Colon);
+
         Expect(TokenTypes.Identifier);
+        var typeDefinition = _currentToken;
+        
+        var parent = _parents.Peek();
+        var type = GetBuildInTypeFromName(typeDefinition.GetValueAsString());
+        var variableAstNode = new VariableAstNode(identifierToken, type);
+        var variableDefinition = new VariableDefinition(variableAstNode);
+        parent.AddLocal(variableDefinition);
+        
+        // Value
+        if (PeekNextToken()!.TokenType != TokenTypes.Assign)
+        {
+            // TODO: Maybe make default value etc
+            Expect(TokenTypes.Semicolon);
+            return;
+        }
+        
+        Expect(TokenTypes.Assign);
+        ExpectEither(TokenTypes.Int, TokenTypes.String);
+        var value = _currentToken;
+        var valueNode = new ValueAstNode(value, GetBuildInTypeFromToken(value));
+        parent.AddChild(new ExpressionAstNode(variableAstNode, valueNode, ExpressionTypes.Assign, _currentToken));
+        Expect(TokenTypes.Semicolon);
+    }
+
+    private BuildInTypes GetBuildInTypeFromToken(Token token)
+    {
+        if (token.TokenType == TokenTypes.Int)
+            return BuildInTypes.Int;
+
+        if (token.TokenType == TokenTypes.String)
+            return BuildInTypes.String;
+
+        throw new Exception("Type is not known");
     }
 
     private void ParseFor()
@@ -109,9 +146,7 @@ class Parser
         Expect(TokenTypes.LParen);
 
         var forAstNode = new ForAstNode(forToken);
-        var parent = _parents.Peek();
-        if (parent is not ScopeableAstNode scopeableAstNode)
-            return;
+        var scopeableAstNode = _parents.Peek();
         
         // Read the variable
         VariableAstNode identifierAst;
@@ -130,14 +165,14 @@ class Parser
             var value = _currentToken;
             valueAst = new ValueAstNode(value, value.TokenType.TokenTypeToBuildInType());
 
-            if (parent is not FunctionDefinitionAstNode funcDef)
+            if (scopeableAstNode is not FunctionDefinitionAstNode funcDef)
             {
                 Debug.Assert(false, "Figure out a way to get to the funcDef");
                 return;
             }
-            
-            forAstNode.AddLocal(new VariableDefinition(identifier.GetValueAsString(), valueAst.Type));
+
             identifierAst = new VariableAstNode(identifier, valueAst.Type);
+            forAstNode.AddLocal(new VariableDefinition(identifierAst));
         }
         else
         {
@@ -149,8 +184,20 @@ class Parser
             ExpectIdentifierOrValue();
             var value = _currentToken;
             valueAst = new ValueAstNode(value, value.TokenType.TokenTypeToBuildInType());
-            
-            identifierAst = new VariableAstNode(identifier, valueAst.Type);
+
+            var parent = _parents.Peek();
+
+            if (parent is not FunctionDefinitionAstNode funcDef)
+                throw new Exception("Figure out how to get to funcDef");
+
+            var existingVariableDefinition = funcDef.GetLocalByName(identifier.GetValueAsString());
+            if(existingVariableDefinition == null) 
+            {
+                InterpreterErrorLogger.LogError("Variable has not yet been assigned in scope", identifier);
+                return;
+            }
+                
+            identifierAst = existingVariableDefinition.VariableAstNode;
         }
         
         Expect(TokenTypes.Semicolon);
@@ -196,8 +243,11 @@ class Parser
     private void ParseIdentifier()
     {
         var expected = PeekNextToken();
-        if (expected!.TokenType != TokenTypes.LParen) 
+        if (expected!.TokenType != TokenTypes.LParen)
+        {
+            ParseVariableOperation();
             return;
+        }
         
         var callToken = _currentToken;
             
@@ -212,6 +262,31 @@ class Parser
         scopeableAstNode.AddChild(callNode);
             
         Expect(TokenTypes.Semicolon);
+    }
+
+    private void ParseVariableOperation()
+    {
+        var variableToken = _currentToken;
+        
+        ExpectVariableModificationOperator();
+        
+        var operatorToken = _currentToken;
+        
+        ExpectIdentifierOrValue();
+        var value = _currentToken;
+        var valueType = GetBuildInTypeFromToken(value);
+        var valueAstNode = new ValueAstNode(value, valueType);
+        
+        var parent = _parents.Peek();
+        var variableDefinition = parent.GetLocalByName(variableToken.GetValueAsString());
+        if (variableDefinition == null)
+        {
+            InterpreterErrorLogger.LogError("Undeclared variable cannot be modified.", variableToken);
+            return;
+        }
+
+        var expression = new ExpressionAstNode(variableDefinition.VariableAstNode!, valueAstNode, operatorToken.TokenType.TokenExpressionTypeToExpressionType(), variableToken);
+        parent.AddChild(expression);
     }
 
     private void ParseRCurly()
@@ -319,8 +394,11 @@ class Parser
                 var typeName = _currentToken;
                 TypeDefinitions.AddIfNotExists(typeName.GetValueAsString());
                 var type = GetBuildInTypeFromName(typeName.GetValueAsString());
-                
-                funcDef.AddArgument(new VariableDefinition(identifierNameToken.GetValueAsString(), type));
+
+                var variableAstNode = new VariableAstNode(identifierNameToken, type);
+
+                var variableDefinition = new VariableDefinition(variableAstNode);
+                funcDef.AddArgument(variableDefinition);
                 ExpectEither(TokenTypes.Comma, TokenTypes.RParen);
             }
             else
@@ -450,6 +528,24 @@ class Parser
                 break;
             default:
                 InterpreterErrorLogger.LogError($"Expected condition operator got {next}", _currentToken);
+                break;
+        }
+    }
+
+    private void ExpectVariableModificationOperator()
+    {
+        var next = GetNextToken();
+        if (next == null)
+            throw new Exception("Token was null");
+
+        switch (next.TokenType)
+        {
+            case TokenTypes.Assign:
+            case TokenTypes.Add:
+            case TokenTypes.Decrease:
+                break;
+            default:
+                InterpreterErrorLogger.LogError($"Expected variable modification operator got {next}", _currentToken);
                 break;
         }
     }

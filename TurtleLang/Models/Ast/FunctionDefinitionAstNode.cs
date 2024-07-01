@@ -3,23 +3,6 @@ using System.Text;
 
 namespace TurtleLang.Models.Ast;
 
-class VariableDefinition
-{
-    public string Name { get; }
-    public BuildInTypes Type { get; }
-
-    public VariableDefinition(string name, BuildInTypes type)
-    {
-        Name = name;
-        Type = type;
-    }
-
-    public override string ToString()
-    {
-        return $"{Name}: {Type}";
-    }
-}
-
 class FunctionDefinitionAstNode: ScopeableAstNode
 {
     public List<VariableDefinition>? Arguments { get; set; }
@@ -33,6 +16,8 @@ class FunctionDefinitionAstNode: ScopeableAstNode
     {
         Arguments ??= new List<VariableDefinition>();
         Arguments.Add(value);
+        
+        AddLocal(value); // All arguments are also locals
     }
     
     public BuildInTypes GetTypeOfArgumentOnIndex(int index)

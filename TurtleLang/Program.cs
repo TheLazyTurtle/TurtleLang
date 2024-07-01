@@ -8,7 +8,7 @@ abstract class Program
     static void Main(string[] args)
     {
         var code = File.ReadAllText("Examples/Main.tl");
-        InternalLogger.IsLoggingEnabled = false;
+        InternalLogger.IsLoggingEnabled = true;
         InternalLogger.Log("================ Lexer ================");
 
         var lexer = new Lexer.Lexer();

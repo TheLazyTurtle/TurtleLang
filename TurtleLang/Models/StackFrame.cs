@@ -1,4 +1,6 @@
-﻿namespace TurtleLang.Models;
+﻿using System.Diagnostics;
+
+namespace TurtleLang.Models;
 
 class StackFrame
 {
@@ -25,6 +27,10 @@ class StackFrame
 
     public void CreateLocalVariable(string variableName, RuntimeValue value)
     {
+        // This means that it has already been added by argument.
+        if (_localsByName.ContainsKey(variableName) && value.Value == null)
+            return;
+        
         _localsByName.Add(variableName, value);
     }
 

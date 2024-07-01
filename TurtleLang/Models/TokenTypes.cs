@@ -48,9 +48,10 @@ static class TokenTypesExtensions
                 return ExpressionTypes.Gte;
             case TokenTypes.Lte:
                 return ExpressionTypes.Lte;
+            case TokenTypes.Assign:
+                return ExpressionTypes.Assign;
             case TokenTypes.Fn:
             case TokenTypes.If:
-            case TokenTypes.Assign:
             case TokenTypes.Identifier:
             case TokenTypes.LParen:
             case TokenTypes.RParen:

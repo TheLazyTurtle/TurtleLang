@@ -10,7 +10,7 @@ class VariableAstNode: ValueAstNode
     {
         if (Type == BuildInTypes.Int)
         {
-            return $"{GetValueAsInt()}: Int";
+            return $"{GetValueAsString()}: Int";
         }
 
         return Type == BuildInTypes.String ? $"{GetValueAsString()}: String" : $"{GetValueAsString()}: Any";

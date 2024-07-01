@@ -47,10 +47,15 @@ class Runner
             case Opcode.For:
                 HandleFor(node);
                 return;
+            case Opcode.Expression:
+                HandleExpression(node);
+                return;
         }
 
         if (node is not ScopeableAstNode scopeableAstNode)
             return;
+        
+        LoadLocals(scopeableAstNode);
 
         var children = scopeableAstNode.GetChildren();
         
@@ -58,6 +63,25 @@ class Runner
         {
             ExecuteNode(child);
         }
+    }
+
+    private void HandleExpression(AstNode node)
+    {
+        if (node is not ExpressionAstNode expressionNode)
+            return;
+        
+        Debug.Assert(expressionNode.ExpressionType == ExpressionTypes.Assign);
+        var stackFrame = _stack.Peek();
+        var variable = stackFrame.GetLocalVariableByName(expressionNode.Left.GetValueAsString()!);
+
+        if (variable == null)
+        {
+            InterpreterErrorLogger.LogError($"Variable: {expressionNode.Left} does not exist in current scope");
+            return;
+        }
+
+        var valueToSet = expressionNode.Right!.Proxy_GetRawValue();
+        variable.Proxy_SetRawValue(valueToSet);
     }
 
     private void HandleFor(AstNode node)
@@ -288,6 +312,15 @@ class Runner
         var _ = _stack.Pop();
         InternalLogger.Log("Popped stackframe");
         // Here we should also do something with the return value once we have implemented that
+    }
+    
+    private void LoadLocals (ScopeableAstNode astNode)
+    {
+        var stackFrame = _stack.Peek();
+        foreach (var local in astNode.Locals)
+        {
+            stackFrame.CreateLocalVariable(local.Name, new RuntimeValue(local.Type, null));
+        }
     }
 
     private void HandleCall(AstNode node)
