@@ -1,14 +1,15 @@
 ﻿using System.Diagnostics;
 using TurtleLang.Models.Ast;
+using TurtleLang.Models.Types;
 
 namespace TurtleLang.Models;
 
 class RuntimeValue
 {
-    public BuildInTypes Type { get; init; }
+    public TypeDefinition Type { get; init; }
     public object? Value { get; private set; }
 
-    public RuntimeValue(BuildInTypes type, object value)
+    public RuntimeValue(TypeDefinition type, object value)
     {
         Type = type;
         Value = value;
@@ -45,12 +46,13 @@ class RuntimeValue
     {
         if (Value == null)
             return $"Uninitialized {Type}";
-        
-        return Type switch
-        {
-            BuildInTypes.Int => $"{(int)Value}",
-            BuildInTypes.String => (string)Value,
-            var _ => throw new ArgumentOutOfRangeException()
-        };
+
+        if (Type is IntTypeDefinition)
+            return $"{(int)Value}";
+
+        if (Type is StringTypeDefinition)
+            return (string)Value;
+
+        throw new ArgumentOutOfRangeException();
     }
 }

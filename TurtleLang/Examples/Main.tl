@@ -5,5 +5,13 @@
 }
 
 fn Second(i: string) {
+    for (var j = 0; j < 100; j++) {
+        Print(j);
+    }
+    
+    var k: i32 = 0;
+    if (k == 0) {
+        Print("if still works");
+    }
     Print(i);
 }

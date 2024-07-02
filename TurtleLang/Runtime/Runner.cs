@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using TurtleLang.Models;
 using TurtleLang.Models.Ast;
+using TurtleLang.Models.Types;
 using TurtleLang.Repositories;
 using StackFrame = TurtleLang.Models.StackFrame;
 
@@ -98,8 +99,8 @@ class Runner
         if (forNode.Initializer == null)
             return;
         
-        stackFrame.CreateLocalVariable(forNode.Initializer.Left.GetValueAsString()!, new RuntimeValue(BuildInTypes.Int, forNode.Initializer.Right!.GetValueAsInt()!));
-        Console.WriteLine($"Creating local variable with name: {forNode.Initializer.Left.GetValueAsString()!} with value: {forNode.Initializer.Right!.GetValueAsInt()}");
+        stackFrame.CreateLocalVariable(forNode.Initializer.Left.GetValueAsString()!, new RuntimeValue(new IntTypeDefinition(), forNode.Initializer.Right!.GetValueAsInt()!));
+        InternalLogger.Log($"Creating local variable with name: {forNode.Initializer.Left.GetValueAsString()!} with value: {forNode.Initializer.Right!.GetValueAsInt()}");
 
         if (forNode.Expression == null)
             return;
@@ -129,7 +130,7 @@ class Runner
         }
             
         Debug.Assert(node.ExpressionType is ExpressionTypes.Increase or ExpressionTypes.Decrease);
-        Debug.Assert(leftRuntimeValue.Type == BuildInTypes.Int);
+        Debug.Assert(leftRuntimeValue.Type is IntTypeDefinition);
 
         var currentValue = leftRuntimeValue.GetValueAsInt();
         leftRuntimeValue.SetValueAsInt(currentValue + 1);
@@ -179,13 +180,13 @@ class Runner
             return false;
         }
 
-        if (leftRuntimeValue.Type != rightRuntimeValue.Type)
+        if (!leftRuntimeValue.Type.Equals(rightRuntimeValue.Type))
         {
             InterpreterErrorLogger.LogError("Types do not match in expression");
             return false;
         }
 
-        if (leftRuntimeValue.Type == BuildInTypes.Int)
+        if (leftRuntimeValue.Type is IntTypeDefinition)
             return CompareIntValues(leftRuntimeValue.GetValueAsInt(), rightRuntimeValue.GetValueAsInt(), expressionAstNode.ExpressionType);
 
         // Make string comparer
@@ -238,22 +239,16 @@ class Runner
             return stackFrame.GetLocalVariableByName(variableNode.GetValueAsString()!);
         }
 
-        if (node is ValueAstNode valueNode)
-        {
-            switch (valueNode.Type)
-            {
-                case BuildInTypes.Int:
-                    return new RuntimeValue(valueNode.Type, valueNode.GetValueAsInt()!);
-                case BuildInTypes.String:
-                    return new RuntimeValue(valueNode.Type, valueNode.GetValueAsString()!);
-                case BuildInTypes.Any:
-                default:
-                    Debug.Assert(false);
-                    throw new ArgumentOutOfRangeException();
-            }
-        }
-
-        return null;
+        if (node is not ValueAstNode valueNode) 
+            return null;
+        
+        if (valueNode.Type is IntTypeDefinition)
+            return new RuntimeValue(valueNode.Type, valueNode.GetValueAsInt()!);
+            
+        if (valueNode.Type is StringTypeDefinition)
+            return new RuntimeValue(valueNode.Type, valueNode.GetValueAsString()!);
+            
+        throw new ArgumentOutOfRangeException();
     }
     
     private void HandleLoadArgument(FunctionDefinitionAstNode node)
@@ -265,7 +260,7 @@ class Runner
 
         foreach (var argument in node.Arguments)
         {
-            var argumentName = argument.Name;
+            var argumentName = argument.GetValueAsString();
             stackFrame.CreateLocalVariable(argumentName, stackFrame.ConsumeArgument());
             InternalLogger.Log($"Method now has access to argument: {argumentName} with value: {stackFrame.GetLocalVariableByName(argumentName)}");
         }
@@ -314,12 +309,15 @@ class Runner
         // Here we should also do something with the return value once we have implemented that
     }
     
-    private void LoadLocals (ScopeableAstNode astNode)
+    private void LoadLocals(ScopeableAstNode astNode)
     {
         var stackFrame = _stack.Peek();
-        foreach (var local in astNode.Locals)
+        if (astNode is not FunctionDefinitionAstNode funcDef)
+            throw new Exception("Why is this not funcDef");
+        
+        foreach (var local in funcDef.Locals)
         {
-            stackFrame.CreateLocalVariable(local.Name, new RuntimeValue(local.Type, null));
+            stackFrame.CreateLocalVariable(local.GetValueAsString(), new RuntimeValue(local.Type, null));
         }
     }
 

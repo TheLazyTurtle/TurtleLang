@@ -2,6 +2,7 @@
 using TurtleLang.Models;
 using TurtleLang.Models.Ast;
 using TurtleLang.Models.Exceptions;
+using TurtleLang.Models.Types;
 using TurtleLang.Repositories;
 
 namespace TurtleLang.Parser;
@@ -88,6 +89,9 @@ class Parser
             case TokenTypes.For:
                 ParseFor();
                 break;
+            case TokenTypes.Struct:
+                ParseStruct();
+                break;
             case TokenTypes.Eof:
             case TokenTypes.RParen:
                 GetNextToken(); // Just skip it as it has no meaning
@@ -97,23 +101,57 @@ class Parser
         }
     }
 
+    private void ParseStruct()
+    {
+        Expect(TokenTypes.Identifier);
+        var identifier = _currentToken;
+        Expect(TokenTypes.LCurly);
+
+        // var structDefinition = new StructDefinitionAstNode(identifier);
+        //
+        // while (PeekNextToken()?.TokenType != TokenTypes.RCurly)
+        // {
+        //     Expect(TokenTypes.Identifier);
+        //     var fieldIdentifier = _currentToken;
+        //     
+        //     Expect(TokenTypes.Identifier);
+        //     var typeIdentifier = _currentToken;
+        //
+        //     var variableAstNode = new VariableAstNode(fieldIdentifier);
+        //     var variableDefinition = new VariableDefinition(variableAstNode);
+        //     structDefinition.AddField(fieldIdentifier.GetValueAsString(), variableDefinition);
+        //     
+        //     Expect(TokenTypes.Semicolon);
+        // }
+        //
+        // TypeDefinitions.AddIfNotExists(identifier.GetValueAsString(), structDefinition);
+        
+        Expect(TokenTypes.RCurly);
+    }
+
     private void ParseVarDeclaration()
     {
+        // Var name
         Expect(TokenTypes.Identifier);
         var identifierToken = _currentToken;
         
         Expect(TokenTypes.Colon);
-
+        
+        // Type name
         Expect(TokenTypes.Identifier);
         var typeDefinition = _currentToken;
         
-        var parent = _parents.Peek();
-        var type = GetBuildInTypeFromName(typeDefinition.GetValueAsString());
+        var type = GetType(typeDefinition.GetValueAsString());
         var variableAstNode = new VariableAstNode(identifierToken, type);
-        var variableDefinition = new VariableDefinition(variableAstNode);
-        parent.AddLocal(variableDefinition);
         
-        // Value
+        // Add variable definition
+        var parent = _parents.Peek();
+        if (parent is not FunctionDefinitionAstNode funcDef)
+            throw new Exception("Add handling for fetching the func def parent");
+            
+        funcDef.AddLocal(variableAstNode);
+        
+        // Assign value
         if (PeekNextToken()!.TokenType != TokenTypes.Assign)
         {
             // TODO: Maybe make default value etc
@@ -129,13 +167,14 @@ class Parser
         Expect(TokenTypes.Semicolon);
     }
 
-    private BuildInTypes GetBuildInTypeFromToken(Token token)
+    // TODO: This function is scuffed, as it does not handle all other cases etc
+    private TypeDefinition GetBuildInTypeFromToken(Token token)
     {
         if (token.TokenType == TokenTypes.Int)
-            return BuildInTypes.Int;
+            return new IntTypeDefinition();
 
         if (token.TokenType == TokenTypes.String)
-            return BuildInTypes.String;
+            return new StringTypeDefinition();
 
         throw new Exception("Type is not known");
     }
@@ -144,7 +183,7 @@ class Parser
     {
         var forToken = _currentToken;
         Expect(TokenTypes.LParen);
-
+        
         var forAstNode = new ForAstNode(forToken);
         var scopeableAstNode = _parents.Peek();
         
@@ -152,6 +191,10 @@ class Parser
         VariableAstNode identifierAst;
         ValueAstNode valueAst;
         Token identifier;
+        
+        if (scopeableAstNode is not FunctionDefinitionAstNode funcDef)
+            throw new Exception("Figure out how to get to funcDef");
+        
         if (PeekNextToken()!.TokenType == TokenTypes.Var)
         {
             // Creating new variable
@@ -163,16 +206,11 @@ class Parser
             Expect(TokenTypes.Int);
             
             var value = _currentToken;
-            valueAst = new ValueAstNode(value, value.TokenType.TokenTypeToBuildInType());
-
-            if (scopeableAstNode is not FunctionDefinitionAstNode funcDef)
-            {
-                Debug.Assert(false, "Figure out a way to get to the funcDef");
-                return;
-            }
-
+            var type = GetBuildInTypeFromToken(value);
+            valueAst = new ValueAstNode(value, type);
+        
             identifierAst = new VariableAstNode(identifier, valueAst.Type);
-            forAstNode.AddLocal(new VariableDefinition(identifierAst));
+            funcDef.AddLocal(identifierAst);
         }
         else
         {
@@ -180,16 +218,12 @@ class Parser
             Expect(TokenTypes.Identifier);
             identifier = _currentToken;
             Expect(TokenTypes.Assign);
-
+        
             ExpectIdentifierOrValue();
             var value = _currentToken;
-            valueAst = new ValueAstNode(value, value.TokenType.TokenTypeToBuildInType());
-
-            var parent = _parents.Peek();
-
-            if (parent is not FunctionDefinitionAstNode funcDef)
-                throw new Exception("Figure out how to get to funcDef");
-
+            var type = GetBuildInTypeFromToken(value);
+            valueAst = new ValueAstNode(value, type);
+        
             var existingVariableDefinition = funcDef.GetLocalByName(identifier.GetValueAsString());
             if(existingVariableDefinition == null) 
             {
@@ -197,22 +231,22 @@ class Parser
                 return;
             }
                 
-            identifierAst = existingVariableDefinition.VariableAstNode;
+            identifierAst = existingVariableDefinition;
         }
         
         Expect(TokenTypes.Semicolon);
-
+        
         forAstNode.AddInitializer(new ExpressionAstNode(identifierAst, valueAst, ExpressionTypes.Assign, identifier));
-
+        
         // Read the expr
         var expression = ParseConditionExpression();
         forAstNode.AddExpression(expression);
         Expect(TokenTypes.Semicolon);
-
+        
         // The operation increment or decrement etc
         Expect(TokenTypes.Identifier);
         var operationIdentifier = _currentToken;
-        var variableDefinition = GetVariableDefinitionFromLocalOrArgument(operationIdentifier.GetValueAsString());
+        var variableDefinition = funcDef.GetLocalByName(operationIdentifier.GetValueAsString());
         var operationIdentifierAstNode = new VariableAstNode(operationIdentifier, variableDefinition.Type);
         
         ExpectEither(TokenTypes.Increase, TokenTypes.Decrease);
@@ -222,7 +256,7 @@ class Parser
         
         scopeableAstNode.AddChild(forAstNode);
         _parents.Push(forAstNode);
-
+        
         GetNextToken();
     }
     
@@ -278,14 +312,17 @@ class Parser
         var valueAstNode = new ValueAstNode(value, valueType);
         
         var parent = _parents.Peek();
-        var variableDefinition = parent.GetLocalByName(variableToken.GetValueAsString());
+        if (parent is not FunctionDefinitionAstNode funcDef)
+            throw new Exception("Find a way to get to the funcDef");
+        
+        var variableDefinition = funcDef.GetLocalByName(variableToken.GetValueAsString());
         if (variableDefinition == null)
         {
             InterpreterErrorLogger.LogError("Undeclared variable cannot be modified.", variableToken);
             return;
         }
-
-        var expression = new ExpressionAstNode(variableDefinition.VariableAstNode!, valueAstNode, operatorToken.TokenType.TokenExpressionTypeToExpressionType(), variableToken);
+        
+        var expression = new ExpressionAstNode(variableDefinition, valueAstNode, operatorToken.TokenType.TokenExpressionTypeToExpressionType(), variableToken);
         parent.AddChild(expression);
     }
 
@@ -364,21 +401,30 @@ class Parser
         return new ExpressionAstNode(leftAst, rightAst, conditionOperator.TokenType.TokenExpressionTypeToExpressionType(), parentToken);
     }
 
-    private AstNode ParseIdentifierOrValueTokenToValueAst(Token token)
+    private ValueAstNode ParseIdentifierOrValueTokenToValueAst(Token token)
     {
         if (token.TokenType == TokenTypes.Identifier)
         {
-            var variableDefinition = GetVariableDefinitionFromLocalOrArgument(token.GetValueAsString());
-            return new VariableAstNode(token, variableDefinition.Type);
+            var parent = _parents.Peek();
+            if (parent is not FunctionDefinitionAstNode funcDef)
+                throw new Exception("Find a way to get funcDef");
+            
+            var variableNode = funcDef.GetLocalByName(_currentToken.GetValueAsString());
+            if (variableNode == null)
+            {
+                InterpreterErrorLogger.LogError("Variable was not defined in scope.", _currentToken);
+            }
+            
+            return new VariableAstNode(token, variableNode.Type);
         }
         
         if (token.TokenType == TokenTypes.Int)
         {
-            return new ValueAstNode(token, BuildInTypes.Int);
+            return new ValueAstNode(token, new IntTypeDefinition());
         }
         
         Debug.Assert(token.TokenType == TokenTypes.String);
-        return new ValueAstNode(token, BuildInTypes.String);
+        return new ValueAstNode(token, new StringTypeDefinition());
     }
 
     private void ParseParameterDefinition(FunctionDefinitionAstNode funcDef)
@@ -392,13 +438,12 @@ class Parser
                 Expect(TokenTypes.Colon);
                 Expect(TokenTypes.Identifier);
                 var typeName = _currentToken;
-                TypeDefinitions.AddIfNotExists(typeName.GetValueAsString());
-                var type = GetBuildInTypeFromName(typeName.GetValueAsString());
-
+                TypeDefinitions.AddOrDefine(typeName.GetValueAsString(), null);
+                var type = GetType(typeName.GetValueAsString());
+        
                 var variableAstNode = new VariableAstNode(identifierNameToken, type);
-
-                var variableDefinition = new VariableDefinition(variableAstNode);
-                funcDef.AddArgument(variableDefinition);
+        
+                funcDef.AddArgument(variableAstNode);
                 ExpectEither(TokenTypes.Comma, TokenTypes.RParen);
             }
             else
@@ -408,37 +453,38 @@ class Parser
         }
     }
 
-    private BuildInTypes GetBuildInTypeFromName(string typeName)
+    private TypeDefinition GetType(string typeName)
     {
-        if (typeName == "i32")
-            return BuildInTypes.Int;
-
-        if (typeName == "string")
-            return BuildInTypes.String;
-
-        return BuildInTypes.Any;
+        return TypeDefinitions.GetByName(typeName);
     }
 
     private void ParseParameterValues(AstNode callNode)
     {
         GetNextToken();
-
+        
         while (_currentToken.TokenType != TokenTypes.RParen)
         {
             if (_currentToken.TokenType == TokenTypes.Identifier)
             {
-                var variableDefinition = GetVariableDefinitionFromLocalOrArgument(_currentToken.GetValueAsString());
-                callNode.AddChild(new VariableAstNode(_currentToken, variableDefinition.Type));
+                var funcDef = GetFirstFunctionDefinitionNode();
+                
+                var variableNode = funcDef.GetLocalByName(_currentToken.GetValueAsString());
+                if (variableNode == null)
+                {
+                    InterpreterErrorLogger.LogError("Variable was not defined in scope.", _currentToken);
+                    return;
+                }
+                callNode.AddChild(new VariableAstNode(_currentToken, variableNode.Type));
                 ExpectEither(TokenTypes.Comma, TokenTypes.RParen);
             }
             else if (_currentToken.TokenType == TokenTypes.String)
             {
-                callNode.AddChild(new ValueAstNode(_currentToken, BuildInTypes.String));
+                callNode.AddChild(new ValueAstNode(_currentToken, new StringTypeDefinition()));
                 ExpectEither(TokenTypes.Comma, TokenTypes.RParen);
             }
             else if (_currentToken.TokenType == TokenTypes.Int)
             {
-                callNode.AddChild(new ValueAstNode(_currentToken, BuildInTypes.Int));
+                callNode.AddChild(new ValueAstNode(_currentToken, new IntTypeDefinition()));
                 ExpectEither(TokenTypes.Comma, TokenTypes.RParen);
             }
             else
@@ -448,42 +494,21 @@ class Parser
         }
     }
 
-    private VariableDefinition GetVariableDefinitionFromLocalOrArgument(string name)
+    private FunctionDefinitionAstNode GetFirstFunctionDefinitionNode()
     {
         var index = 0;
         var parent = _parents.PeekAtIndex(index);
-        VariableDefinition? definition = null;
         
-        while (definition == null) 
+        while (parent is not FunctionDefinitionAstNode)
         {
-            if (parent is FunctionDefinitionAstNode functionDefinitionAstNode)  
-            {
-                definition = functionDefinitionAstNode.GetArgumentByName(name);
-                
-                if (definition != null)
-                    return definition;
-            }
-
-            if (parent is not ScopeableAstNode scopeableAstNode)
-                throw new Exception();
-
-            definition = scopeableAstNode.GetLocalByName(name);
-            
-            if (parent.Opcode == Opcode.FunctionDefinition)
-                break;
-
-            parent = _parents.PeekAtIndex(++index);
-        }
-
-        if (definition == null)
-        {
-            InterpreterErrorLogger.LogError($"Variable {name} does not exist in function {parent.GetValueAsString()}.");
-            throw new Exception(); // This can never be triggered because of the line above
+            index++;
+            parent = _parents.PeekAtIndex(index);
         }
         
-        return definition;
+        Debug.Assert(_parents.PeekAtIndex(index) is FunctionDefinitionAstNode);
+        return _parents.PeekAtIndex(index) as FunctionDefinitionAstNode;
     }
-
+    
     private Token? PeekNextToken()
     {
         if (_currentIndex + 1 >= _tokens.Count)

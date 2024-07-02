@@ -1,18 +1,10 @@
-﻿namespace TurtleLang.Models.Ast;
+﻿using TurtleLang.Models.Types;
+
+namespace TurtleLang.Models.Ast;
 
 class VariableAstNode: ValueAstNode
 {
-    public VariableAstNode(Token? token, BuildInTypes type) : base(Opcode.Variable, token, type)
+    public VariableAstNode(Token? token, TypeDefinition type) : base(Opcode.Variable, token, type)
     {
-    }
-    
-    public override string ToString()
-    {
-        if (Type == BuildInTypes.Int)
-        {
-            return $"{GetValueAsString()}: Int";
-        }
-
-        return Type == BuildInTypes.String ? $"{GetValueAsString()}: String" : $"{GetValueAsString()}: Any";
     }
 }

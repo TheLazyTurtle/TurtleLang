@@ -18,6 +18,7 @@ public enum TokenTypes
     Increase,
     Sub,
     Decrease,
+    Struct,
     Assign,
     Identifier,
     LParen,
@@ -67,14 +68,14 @@ static class TokenTypesExtensions
         }
     }
 
-    public static BuildInTypes TokenTypeToBuildInType(this TokenTypes tokenType)
+    public static PrimitiveType TokenTypeToBuildInType(this TokenTypes tokenType)
     {
         switch (tokenType)
         {
             case TokenTypes.String:
-                return BuildInTypes.String;
+                return PrimitiveType.String;
             case TokenTypes.Int:
-                return BuildInTypes.Int;
+                return PrimitiveType.Int;
             case TokenTypes.Eq:
             case TokenTypes.Gt:
             case TokenTypes.Lt:

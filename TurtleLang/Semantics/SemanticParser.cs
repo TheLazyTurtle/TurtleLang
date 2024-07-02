@@ -17,41 +17,30 @@ class SemanticParser
     public void Validate()
     {
         var success = false;
-        success = ValidateAllVarsHaveTypes();
+        success = ValidateAllTypesHaveDefinition();
         Debug.Assert(success);
+        
         success = ValidateAllAssignsHaveCorrectType();
         Debug.Assert(success);
+        
         success = FunctionValidationPass();
         Debug.Assert(success);
+        
         success = ValidateArguments();
         Debug.Assert(success);
     }
-    
-    private bool ValidateAllVarsHaveTypes()
+
+    private bool ValidateAllTypesHaveDefinition()
     {
-        var todo = new Queue<AstNode>();
-        
-        foreach (var astNode in FunctionDefinitions.GetAll())
+        foreach (var typeDefinition in TypeDefinitions.Proxy_GetAllTypeDefinitions())
         {
-            if (astNode.Value == null)
+            if (typeDefinition.Value != null) 
                 continue;
             
-            todo.Enqueue(astNode.Value);
+            InterpreterErrorLogger.LogError($"Struct: {typeDefinition.Key} does not have a definition");
+            return false;
         }
-
-        while (todo.Count > 0)
-        {
-            var current = todo.Dequeue();
-
-            if (current is VariableAstNode { Type: BuildInTypes.Any })
-                throw new Exception("Type is any");
-
-            foreach (var child in current.Children)
-            {
-                todo.Enqueue(child);
-            }
-        }
-
+        
         return true;
     }
 
@@ -94,7 +83,7 @@ class SemanticParser
                 return false;
             }
 
-            if (leftNode.Type == rightNode.Type) 
+            if (leftNode.Type.Equals(rightNode.Type)) 
                 continue;
             
             InterpreterErrorLogger.LogError("Type assigned does not match type for variable", expressionNode);

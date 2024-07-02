@@ -1,7 +1,8 @@
 ﻿namespace TurtleLang.Models.Ast;
 
-enum BuildInTypes
+enum PrimitiveType
 {
+    None,
     Int,
     String,
     Any
