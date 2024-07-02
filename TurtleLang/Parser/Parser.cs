@@ -107,26 +107,35 @@ class Parser
         var identifier = _currentToken;
         Expect(TokenTypes.LCurly);
 
-        // var structDefinition = new StructDefinitionAstNode(identifier);
-        //
-        // while (PeekNextToken()?.TokenType != TokenTypes.RCurly)
-        // {
-        //     Expect(TokenTypes.Identifier);
-        //     var fieldIdentifier = _currentToken;
-        //     
-        //     Expect(TokenTypes.Identifier);
-        //     var typeIdentifier = _currentToken;
-        //
-        //     var variableAstNode = new VariableAstNode(fieldIdentifier);
-        //     var variableDefinition = new VariableDefinition(variableAstNode);
-        //     structDefinition.AddField(fieldIdentifier.GetValueAsString(), variableDefinition);
-        //     
-        //     Expect(TokenTypes.Semicolon);
-        // }
-        //
-        // TypeDefinitions.AddIfNotExists(identifier.GetValueAsString(), structDefinition);
+        var structDefinition = new StructDefinitionAstNode(identifier.GetValueAsString());
+        
+        while (PeekNextToken()?.TokenType != TokenTypes.RCurly)
+        {
+            Expect(TokenTypes.Identifier);
+            var fieldIdentifier = _currentToken;
+            
+            Expect(TokenTypes.Colon);
+            
+            Expect(TokenTypes.Identifier);
+            var typeIdentifier = _currentToken;
+
+            var type = TypeDefinitions.GetByName(typeIdentifier.GetValueAsString());
+
+            if (type == null)
+            {
+                Debug.Assert(false, "This probably means that we have to add it just like we do somewhere else. It probably means that it has been used before being defined");
+                return;
+            }
+        
+            structDefinition.AddField(fieldIdentifier.GetValueAsString(), type);
+            
+            Expect(TokenTypes.Semicolon);
+        }
+        
+        TypeDefinitions.AddOrDefine(identifier.GetValueAsString(), structDefinition);
         
         Expect(TokenTypes.RCurly);
+        GetNextToken(); // To skip RCurly
     }
 
     private void ParseVarDeclaration()

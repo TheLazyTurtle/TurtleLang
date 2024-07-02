@@ -39,6 +39,19 @@ class ExpressionAstNode: AstNode
 
     public override string ToString()
     {
-        return $"{Left} {ExpressionType.GetDisplayValue()} {Right}";
+        var leftStr = Left.ToString();
+        var rightStr = Right?.ToString() ?? "";
+
+        if (Left is VariableAstNode lVariableAstNode)
+            leftStr = lVariableAstNode.ToString();
+        else if (Left is ValueAstNode lValueAstNode)
+            leftStr = lValueAstNode.ToString();
+        
+        if (Right is VariableAstNode rVariableAstNode)
+            rightStr = rVariableAstNode.ToString();
+        else if (Right is ValueAstNode rValueAstNode)
+            rightStr = rValueAstNode.ToString();
+
+        return $"{leftStr} {ExpressionType.GetDisplayValue()} {rightStr}";
     }
 }
