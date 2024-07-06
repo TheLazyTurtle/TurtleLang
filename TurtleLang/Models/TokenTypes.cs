@@ -19,6 +19,7 @@ public enum TokenTypes
     Sub,
     Decrease,
     Struct,
+    New,
     Assign,
     Identifier,
     LParen,
@@ -59,37 +60,8 @@ static class TokenTypesExtensions
             case TokenTypes.LCurly:
             case TokenTypes.RCurly:
             case TokenTypes.Semicolon:
-            case TokenTypes.String:
-            case TokenTypes.Int:
-            case TokenTypes.Comma:
-            case TokenTypes.Eof:
-            default:
-                throw new ArgumentOutOfRangeException(nameof(tokenType), tokenType, null);
-        }
-    }
-
-    public static PrimitiveType TokenTypeToBuildInType(this TokenTypes tokenType)
-    {
-        switch (tokenType)
-        {
-            case TokenTypes.String:
-                return PrimitiveType.String;
-            case TokenTypes.Int:
-                return PrimitiveType.Int;
-            case TokenTypes.Eq:
-            case TokenTypes.Gt:
-            case TokenTypes.Lt:
-            case TokenTypes.Gte:
-            case TokenTypes.Lte:
-            case TokenTypes.Fn:
-            case TokenTypes.If:
-            case TokenTypes.Assign:
-            case TokenTypes.Identifier:
-            case TokenTypes.LParen:
-            case TokenTypes.RParen:
-            case TokenTypes.LCurly:
-            case TokenTypes.RCurly:
-            case TokenTypes.Semicolon:
+            // case TokenTypes.String:
+            // case TokenTypes.Int:
             case TokenTypes.Comma:
             case TokenTypes.Eof:
             default:

@@ -107,7 +107,7 @@ class Parser
         var identifier = _currentToken;
         Expect(TokenTypes.LCurly);
 
-        var structDefinition = new StructDefinitionAstNode(identifier.GetValueAsString());
+        var structDefinition = new StructDefinition(identifier.GetValueAsString());
         
         while (PeekNextToken()?.TokenType != TokenTypes.RCurly)
         {
@@ -169,23 +169,61 @@ class Parser
         }
         
         Expect(TokenTypes.Assign);
-        ExpectEither(TokenTypes.Int, TokenTypes.String);
+        ExpectValueOrNew();
         var value = _currentToken;
-        var valueNode = new ValueAstNode(value, GetBuildInTypeFromToken(value));
-        parent.AddChild(new ExpressionAstNode(variableAstNode, valueNode, ExpressionTypes.Assign, _currentToken));
+        if (value.TokenType == TokenTypes.New)
+        {
+            var structIdentifier = GetNextToken();
+            Debug.Assert(structIdentifier != null);
+            var valueNode = new ValueAstNode(structIdentifier, GetTypeForValue(structIdentifier));
+            parent.AddChild(new ExpressionAstNode(variableAstNode, valueNode, ExpressionTypes.Assign, _currentToken));
+            Expect(TokenTypes.LCurly);
+
+            var structTypeDefinition = TypeDefinitions.GetByName(structIdentifier.GetValueAsString());
+            if (structTypeDefinition == null)
+                throw new Exception("We probably have to add the type here as a type that needs a decl");
+
+            if (structTypeDefinition is not StructDefinition structDefinition)
+                InterpreterErrorLogger.LogError($"Cannot instantiate build in type: {structTypeDefinition}", structIdentifier);
+            
+            // TODO: Find a way to properly add types to the heap, and how to assign values to a struct in the heap
+            while (PeekNextToken()!.TokenType != TokenTypes.RCurly)
+            {
+                Expect(TokenTypes.Identifier);
+                var variableIdentifier = _currentToken;
+                
+                Expect(TokenTypes.Assign);
+                
+                ExpectIdentifierOrValue();
+                var variableValue = _currentToken;
+                
+                Expect(TokenTypes.Comma);
+            }
+            Expect(TokenTypes.RCurly);
+        }
+        else
+        {
+            var valueNode = new ValueAstNode(value, GetTypeForValue(value));
+            parent.AddChild(new ExpressionAstNode(variableAstNode, valueNode, ExpressionTypes.Assign, _currentToken));
+        }
         Expect(TokenTypes.Semicolon);
     }
 
     // TODO: This function is scuffed, as it does not handle all other cases etc
-    private TypeDefinition GetBuildInTypeFromToken(Token token)
+    private TypeDefinition GetTypeForValue(Token token)
     {
         if (token.TokenType == TokenTypes.Int)
             return new IntTypeDefinition();
 
         if (token.TokenType == TokenTypes.String)
             return new StringTypeDefinition();
+        
+        
+        var type = TypeDefinitions.GetByName(token.GetValueAsString());
+        if (type == null)
+            throw new Exception("We probably have to define it here as an undeclared struct");
 
-        throw new Exception("Type is not known");
+        return type;
     }
 
     private void ParseFor()
@@ -215,7 +253,7 @@ class Parser
             Expect(TokenTypes.Int);
             
             var value = _currentToken;
-            var type = GetBuildInTypeFromToken(value);
+            var type = GetTypeForValue(value);
             valueAst = new ValueAstNode(value, type);
         
             identifierAst = new VariableAstNode(identifier, valueAst.Type);
@@ -230,7 +268,7 @@ class Parser
         
             ExpectIdentifierOrValue();
             var value = _currentToken;
-            var type = GetBuildInTypeFromToken(value);
+            var type = GetTypeForValue(value);
             valueAst = new ValueAstNode(value, type);
         
             var existingVariableDefinition = funcDef.GetLocalByName(identifier.GetValueAsString());
@@ -317,7 +355,7 @@ class Parser
         
         ExpectIdentifierOrValue();
         var value = _currentToken;
-        var valueType = GetBuildInTypeFromToken(value);
+        var valueType = GetTypeForValue(value);
         var valueAstNode = new ValueAstNode(value, valueType);
         
         var parent = _parents.Peek();
@@ -604,6 +642,18 @@ class Parser
         if (next.TokenType != first && next.TokenType != second)
         {
             InterpreterErrorLogger.LogError($"Expected: {first.ToString()} or {second.ToString()} got {next}", _currentToken);
+        }
+    }
+
+    private void ExpectValueOrNew()
+    {
+        var next = GetNextToken();
+        if (next == null)
+            throw new UnexpectedTokenException("Token was null");
+        
+        if (next.TokenType != TokenTypes.Int && next.TokenType != TokenTypes.String && next.TokenType != TokenTypes.New)
+        {
+            InterpreterErrorLogger.LogError($"Expected: Int or String or New got {next}", _currentToken);
         }
     }
 

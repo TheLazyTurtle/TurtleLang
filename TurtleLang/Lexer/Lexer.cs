@@ -176,6 +176,9 @@ class Lexer
             case "struct":
                 AddToken(TokenTypes.Struct);
                 return;
+            case "new":
+                AddToken(TokenTypes.New);
+                return;
         }
         
         AddToken(new Token(TokenTypes.Identifier, str, _currentLineNumber));
@@ -224,7 +227,10 @@ class Lexer
     private char? GetNextChar()
     {
         if (_currentIndex + 1 >= _code.Length)
+        {
+            _currentIndex++; // To make sure we actually exit the loop
             return null; 
+        }
         
         return _code[++_currentIndex];
     }

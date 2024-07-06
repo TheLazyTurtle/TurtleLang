@@ -53,6 +53,9 @@ class RuntimeValue
         if (Type is StringTypeDefinition)
             return (string)Value;
 
+        if (Type is StructDefinition)
+            return (string)Value;
+
         throw new ArgumentOutOfRangeException();
     }
 }

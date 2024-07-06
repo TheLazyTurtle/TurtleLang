@@ -284,12 +284,19 @@ class Runner
                 // The current functions stackframe contains a local with this name so we can use this value.
                 var localVariable = currentFunctionStackFrame.GetLocalVariableByName(variableNode.GetValueAsString()!);
                 if (localVariable == null)
-                    InterpreterErrorLogger.LogError($"Variable {variableNode.GetValueAsString()} does not exist",
-                        variableNode);
+                    InterpreterErrorLogger.LogError($"Variable {variableNode.GetValueAsString()} does not exist", variableNode);
 
-                // We make a new one so we pass by value and not by reference. As these things are not objects they should not be passed as reference
-                _stackFrameBeingBuild.AddArgument(new RuntimeValue(localVariable.Type, localVariable.Value));
-                InternalLogger.Log($"Passing value by value with value of: {localVariable} to stackframe");
+                if (localVariable.Type is StructDefinition)
+                {
+                    _stackFrameBeingBuild.AddArgument(localVariable);
+                    InternalLogger.Log($"Passing value by reference with type of: {localVariable} to stackframe");
+                }
+                else
+                {
+                    // We make a new one so we pass by value and not by reference. As these things are not objects they should not be passed as reference
+                    _stackFrameBeingBuild.AddArgument(new RuntimeValue(localVariable.Type, localVariable.Value));
+                    InternalLogger.Log($"Passing value by value with value of: {localVariable} to stackframe");
+                }
 
                 continue;
             }

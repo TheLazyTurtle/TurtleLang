@@ -1,10 +1,10 @@
 ﻿namespace TurtleLang.Models.Types;
 
-class StructDefinitionAstNode: TypeDefinition
+class StructDefinition: TypeDefinition
 {
     private readonly Dictionary<string, TypeDefinition> _fieldsByName = new();
 
-    public StructDefinitionAstNode(string name)
+    public StructDefinition(string name)
     {
         Name = name;
     }

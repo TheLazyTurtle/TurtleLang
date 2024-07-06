@@ -1,10 +1,8 @@
-﻿using TurtleLang.Repositories;
-
-namespace TurtleLang.Models.Types;
+﻿namespace TurtleLang.Models.Types;
 
 class TypeDefinition: IEquatable<TypeDefinition>
 {
-    public string Name { get; init; }
+    protected string Name { get; init; }
 
     public bool Equals(TypeDefinition? other)
     {
@@ -22,5 +20,10 @@ class TypeDefinition: IEquatable<TypeDefinition>
     public override int GetHashCode()
     {
         return Name.GetHashCode();
+    }
+
+    public override string ToString()
+    {
+        return Name;
     }
 }

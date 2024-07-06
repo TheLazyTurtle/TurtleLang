@@ -22,6 +22,6 @@ class ValueAstNode: AstNode
             return $"{GetValueAsInt()}: Int";
         }
 
-        return Type is StringTypeDefinition ? $"{GetValueAsString()}: String" : $"{GetValueAsString()}: Any";
+        return $"{GetValueAsString()}: {Type}";
     }
 }

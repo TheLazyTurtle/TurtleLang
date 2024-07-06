@@ -10,11 +10,6 @@ class VariableAstNode: ValueAstNode
     
     public override string ToString()
     {
-        if (Type is IntTypeDefinition)
-        {
-            return $"{GetValueAsString()}: Int";
-        }
-
-        return Type is StringTypeDefinition ? $"{GetValueAsString()}: String" : $"{GetValueAsString()}: Any";
+        return $"{GetValueAsString()}: {Type}";
     }
 }

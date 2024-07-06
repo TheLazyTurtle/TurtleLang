@@ -16,6 +16,7 @@ class SemanticParser
 
     public void Validate()
     {
+        // TODO: Make something that will check that every variable does get a value assigned
         var success = false;
         success = ValidateAllTypesHaveDefinition();
         Debug.Assert(success);
