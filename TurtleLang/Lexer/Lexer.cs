@@ -74,7 +74,9 @@ class Lexer
                 case '-':
                     ConsumeSubOrDecrease();
                     continue;
-                    
+                case '/':
+                    ConsumeDivideOrComment();
+                    continue;
             }
             
             GetIdentifierOrKeyword();
@@ -82,6 +84,16 @@ class Lexer
         
         _tokens.Add(new Token(TokenTypes.Eof, _currentLineNumber));
         return _tokens;
+    }
+
+    private void ConsumeDivideOrComment()
+    {
+        var currentChar = _code[_currentIndex];
+        Debug.Assert(currentChar == '/');
+        
+        var nextChar = GetNextChar();
+        AddToken(nextChar == '/' ? TokenTypes.Comment : TokenTypes.Divide);
+        GetNextChar();
     }
 
     private void ConsumeSubOrDecrease()

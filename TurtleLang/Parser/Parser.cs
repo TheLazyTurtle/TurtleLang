@@ -92,12 +92,24 @@ class Parser
             case TokenTypes.Struct:
                 ParseStruct();
                 break;
+            case TokenTypes.Comment:
+                ParseComment();
+                break;
             case TokenTypes.Eof:
             case TokenTypes.RParen:
                 GetNextToken(); // Just skip it as it has no meaning
                 break;
             default:
                 throw new ArgumentOutOfRangeException();
+        }
+    }
+
+    private void ParseComment()
+    {
+        // This skips everything until it finds a semicolon
+        while (PeekNextToken().TokenType != TokenTypes.Semicolon) 
+        {
+            GetNextToken();
         }
     }
 
