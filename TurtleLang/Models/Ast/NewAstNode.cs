@@ -18,7 +18,7 @@ class NewAstNode: AstNode
     
     public int GetAssignedValueCount()
     {
-        return _valuesByName.Count();
+        return _valuesByName.Count;
     }
 
     public void AssignField(string fieldName, ValueAstNode value)

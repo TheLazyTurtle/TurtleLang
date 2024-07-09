@@ -533,13 +533,36 @@ class Parser
             {
                 var funcDef = GetFirstFunctionDefinitionNode();
                 
-                var variableNode = funcDef.GetLocalByName(_currentToken.GetValueAsString());
-                if (variableNode == null)
+                if (PeekNextToken().TokenType == TokenTypes.Dot)
                 {
-                    InterpreterErrorLogger.LogError("Variable was not defined in scope.", _currentToken);
-                    return;
+                    // Get value from struct
+                    var structToken = _currentToken;
+                    var structLocal = funcDef.GetLocalByName(structToken.GetValueAsString());
+                    var typeDefinition = structLocal.Type;
+                    if (typeDefinition is not StructDefinition structDefinition)
+                        throw new Exception("Handle primitives on heap");
+
+                    GetNextToken(); // This skips the . (dot)
+                    GetNextToken(); // This will get us the name of the field
+                    var fieldToGetFromStruct = _currentToken;
+
+                    var typeOfField = structDefinition.GetFieldByName(fieldToGetFromStruct.GetValueAsString());
+
+                    var variableByRef = new VariableByRefAstNode(_currentToken, structLocal, fieldToGetFromStruct.GetValueAsString(), typeOfField);
+                    callNode.AddChild(variableByRef);
                 }
-                callNode.AddChild(new VariableAstNode(_currentToken, variableNode.Type));
+                else
+                {
+                    // Get normal value
+                    var variableNode = funcDef.GetLocalByName(_currentToken.GetValueAsString());
+                    if (variableNode == null)
+                    {
+                        InterpreterErrorLogger.LogError("Variable was not defined in scope.", _currentToken);
+                        return;
+                    }
+                
+                    callNode.AddChild(new VariableAstNode(_currentToken, variableNode.Type));
+                }
                 ExpectEither(TokenTypes.Comma, TokenTypes.RParen);
             }
             else if (_currentToken.TokenType == TokenTypes.String)

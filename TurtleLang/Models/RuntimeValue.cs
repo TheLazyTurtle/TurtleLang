@@ -39,6 +39,7 @@ class RuntimeValue
 
     public void Proxy_SetRawValue(object value)
     {
+        Debug.Assert(value is not ValueAstNode);
         Value = value;
     }
 

@@ -92,7 +92,7 @@ class Runner
         foreach (var assignedValue in newNode.GetAssignedValues())
         {
             var refValue = heapItem.GetVariableByRef(assignedValue.Key);
-            refValue.Proxy_SetRawValue(assignedValue.Value);
+            refValue.Proxy_SetRawValue(assignedValue.Value.Proxy_GetRawValue());
         }
     }
 
@@ -310,6 +310,22 @@ class Runner
             if (child is VariableAstNode variableNode)
             {
                 var currentFunctionStackFrame = _stack.Peek();
+
+                if (child is VariableByRefAstNode refValueAstNode)
+                {
+                    var runtimeStruct = currentFunctionStackFrame.GetLocalVariableByName(refValueAstNode.StructVariable.GetValueAsString());
+                    if (runtimeStruct == null)
+                    {
+                        InterpreterErrorLogger.LogError("Value did not exist");
+                        return;
+                    }
+
+                    var heapValue = InternalHeap.GetFromAddress(runtimeStruct.GetValueAsInt());
+                    var variableFromStruct = heapValue.GetVariableByRef(refValueAstNode.FieldNameToGetByRef);
+                    _stackFrameBeingBuild.AddArgument(variableFromStruct);
+                        
+                    continue;
+                }
 
                 // The current functions stackframe contains a local with this name so we can use this value.
                 var localVariable = currentFunctionStackFrame.GetLocalVariableByName(variableNode.GetValueAsString()!);

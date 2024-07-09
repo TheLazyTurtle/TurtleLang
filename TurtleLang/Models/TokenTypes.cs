@@ -33,6 +33,7 @@ public enum TokenTypes
     String,
     Int,
     Comma,
+    Dot,
     Eof,
 }
 

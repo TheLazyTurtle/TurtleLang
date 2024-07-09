@@ -59,6 +59,9 @@ class Lexer
                 case ',':
                     ConsumeSingleCharToken(TokenTypes.Comma);
                     continue;
+                case '.':
+                    ConsumeSingleCharToken(TokenTypes.Dot);
+                    continue;
                 case '=':
                     ConsumeAssignOrEqual();
                     continue;

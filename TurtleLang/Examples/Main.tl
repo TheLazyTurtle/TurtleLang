@@ -9,9 +9,9 @@ fn Main() {
         str = "asdf",
     };
     Third(custom);
-    var i: string = "asdf";
-    i = "jkl;";
-    Second(i);
+    //var i: string = "asdf";
+    //i = "jkl;";
+    //Second(i);
 }
 
 fn Second(i: string) {
@@ -27,4 +27,5 @@ fn Second(i: string) {
 }
 
 fn Third(s: customType) {
+    Print(s.str);
 }
