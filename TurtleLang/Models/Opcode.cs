@@ -5,6 +5,7 @@ enum Opcode
     If,
     Else,
     For,
+    New,
     Variable,
     Value,
     Expression,

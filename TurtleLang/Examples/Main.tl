@@ -6,7 +6,7 @@
 fn Main() {
     var custom: customType = new customType {
         i = 10,
-        str = "asdf"
+        str = "asdf",
     };
     Third(custom);
     var i: string = "asdf";

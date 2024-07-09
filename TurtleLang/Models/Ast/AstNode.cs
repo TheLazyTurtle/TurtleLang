@@ -102,6 +102,8 @@ class AstNode
                 sb.AppendLine($"{expressionAstNode.ToString(depth)}");
             else if (child is ValueAstNode valueAstNode)
                 sb.AppendLine($"{valueAstNode.ToString(depth)}");
+            else if (child is NewAstNode newNode)
+                sb.AppendLine($"{newNode.ToString(depth)}");
             else
                 sb.Append(child.ToString(depth));
         }

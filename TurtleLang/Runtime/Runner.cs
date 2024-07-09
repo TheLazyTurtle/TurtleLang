@@ -51,6 +51,9 @@ class Runner
             case Opcode.Expression:
                 HandleExpression(node);
                 return;
+            case Opcode.New:
+                HandleNew(node);
+                return;
         }
 
         if (node is not ScopeableAstNode scopeableAstNode)
@@ -63,6 +66,33 @@ class Runner
         foreach (var child in children)
         {
             ExecuteNode(child);
+        }
+    }
+
+    private void HandleNew(AstNode node)
+    {
+        if (node is not NewAstNode newNode)
+            return;
+
+        var typeDefinition = TypeDefinitions.GetByName(newNode.GetValueAsString());
+        Debug.Assert(typeDefinition != null);
+        if (typeDefinition is not StructDefinition structDefinition)
+            return;
+        
+        var runtimeStruct = new RuntimeStruct(structDefinition);
+        var addr = InternalHeap.Malloc(runtimeStruct);
+        Debug.Assert(addr != 0);
+
+        var stackFrame = _stack.Peek();
+        var variable = stackFrame.GetLocalVariableByName(newNode.VariableAstNode.GetValueAsString());
+        Debug.Assert(variable != null);
+        variable.SetValueAsInt(addr);
+
+        var heapItem = InternalHeap.GetFromAddress(addr);
+        foreach (var assignedValue in newNode.GetAssignedValues())
+        {
+            var refValue = heapItem.GetVariableByRef(assignedValue.Key);
+            refValue.Proxy_SetRawValue(assignedValue.Value);
         }
     }
 

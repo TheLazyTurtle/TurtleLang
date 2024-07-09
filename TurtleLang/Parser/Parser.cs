@@ -175,8 +175,8 @@ class Parser
         {
             var structIdentifier = GetNextToken();
             Debug.Assert(structIdentifier != null);
-            var valueNode = new ValueAstNode(structIdentifier, GetTypeForValue(structIdentifier));
-            parent.AddChild(new ExpressionAstNode(variableAstNode, valueNode, ExpressionTypes.Assign, _currentToken));
+            var newAstNode = new NewAstNode(structIdentifier, GetTypeForValue(structIdentifier), variableAstNode);
+            parent.AddChild(newAstNode);
             Expect(TokenTypes.LCurly);
 
             var structTypeDefinition = TypeDefinitions.GetByName(structIdentifier.GetValueAsString());
@@ -184,9 +184,11 @@ class Parser
                 throw new Exception("We probably have to add the type here as a type that needs a decl");
 
             if (structTypeDefinition is not StructDefinition structDefinition)
+            {
                 InterpreterErrorLogger.LogError($"Cannot instantiate build in type: {structTypeDefinition}", structIdentifier);
+                return;
+            }
             
-            // TODO: Find a way to properly add types to the heap, and how to assign values to a struct in the heap
             while (PeekNextToken()!.TokenType != TokenTypes.RCurly)
             {
                 Expect(TokenTypes.Identifier);
@@ -196,8 +198,13 @@ class Parser
                 
                 ExpectIdentifierOrValue();
                 var variableValue = _currentToken;
+
+                // TODO: Make it that we can also use variables to fill a struct
+                var valueToAssignNode = new ValueAstNode(variableValue, GetTypeForValue(variableValue));
+                newAstNode.AssignField(variableIdentifier.GetValueAsString(), valueToAssignNode);
                 
-                Expect(TokenTypes.Comma);
+                if (PeekNextToken().TokenType == TokenTypes.Comma)
+                    Expect(TokenTypes.Comma);
             }
             Expect(TokenTypes.RCurly);
         }
@@ -209,7 +216,6 @@ class Parser
         Expect(TokenTypes.Semicolon);
     }
 
-    // TODO: This function is scuffed, as it does not handle all other cases etc
     private TypeDefinition GetTypeForValue(Token token)
     {
         if (token.TokenType == TokenTypes.Int)

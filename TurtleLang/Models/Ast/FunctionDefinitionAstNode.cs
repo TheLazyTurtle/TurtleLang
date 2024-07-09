@@ -66,6 +66,8 @@ class FunctionDefinitionAstNode: ScopeableAstNode
                 sb.AppendLine($"{forAstNode.ToString(1)}");
             else if (child is ExpressionAstNode expressionAstNode)
                 sb.AppendLine($"{expressionAstNode.ToString(1)}");
+            else if (child is NewAstNode newNode)
+                sb.AppendLine($"{newNode.ToString(1)}");
             else
                 sb.Append(child.ToString(1));
         }

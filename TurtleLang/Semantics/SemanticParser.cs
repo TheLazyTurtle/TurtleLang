@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics;
-using System.Text;
 using TurtleLang.Models;
 using TurtleLang.Models.Ast;
+using TurtleLang.Models.Types;
 using TurtleLang.Repositories;
 
 namespace TurtleLang.Semantics;
@@ -16,12 +16,13 @@ class SemanticParser
 
     public void Validate()
     {
-        // TODO: Make something that will check that every variable does get a value assigned
-        var success = false;
-        success = ValidateAllTypesHaveDefinition();
+        var success = ValidateAllTypesHaveDefinition();
         Debug.Assert(success);
         
         success = ValidateAllAssignsHaveCorrectType();
+        Debug.Assert(success);
+
+        success = ValidateStructHasAllFieldsAssigned();
         Debug.Assert(success);
         
         success = FunctionValidationPass();
@@ -29,6 +30,54 @@ class SemanticParser
         
         success = ValidateArguments();
         Debug.Assert(success);
+    }
+
+    private bool ValidateStructHasAllFieldsAssigned()
+    {
+        var todo = new Queue<AstNode>();
+        
+        foreach (var astNode in FunctionDefinitions.GetAll())
+        {
+            if (astNode.Value == null)
+                continue;
+            
+            todo.Enqueue(astNode.Value);
+        }
+
+        while (todo.Count > 0)
+        {
+            var current = todo.Dequeue();
+
+            foreach (var child in current.Children)
+            {
+                todo.Enqueue(child);
+            }
+
+            if (current is NewAstNode newAstNode)
+            {
+                var definition = newAstNode.Type;
+                if (definition is not StructDefinition structDefinition)
+                    throw new Exception("Handle adding base types to heap");
+
+                if (newAstNode.GetAssignedValueCount() != structDefinition.GetFieldCount())
+                {
+                    InterpreterErrorLogger.LogError($"Struct is missing fields.", newAstNode);
+                    return false;
+                }
+
+                foreach (var assignedValue in newAstNode.GetAssignedValues())
+                {
+                    var assignedVar = assignedValue.Key;
+                    if (!structDefinition.ContainsField(assignedVar))
+                    {
+                        InterpreterErrorLogger.LogError($"Tried to assign field that does not exist on struct. Field assigned: {assignedVar}", newAstNode);
+                        return false;
+                    }
+                }
+            }
+        }
+
+        return true;
     }
 
     private bool ValidateAllTypesHaveDefinition()
@@ -64,6 +113,25 @@ class SemanticParser
             foreach (var child in current.Children)
             {
                 todo.Enqueue(child);
+            }
+
+            if (current is NewAstNode newAstNode)
+            {
+                var definition = newAstNode.Type;
+                if (definition is not StructDefinition structDefinition)
+                    throw new Exception("Handle adding base types to heap");
+                
+                foreach (var assignedValue in newAstNode.GetAssignedValues())
+                {
+                    var expectedType = structDefinition.GetFieldByName(assignedValue.Key);
+                    var actualType = assignedValue.Value.Type;
+
+                    if (expectedType.Equals(actualType)) 
+                        continue;
+                    
+                    InterpreterErrorLogger.LogError($"Type was not expected. Expected {expectedType} got {actualType}.", newAstNode);
+                    return false;
+                }
             }
 
             if (current is not ExpressionAstNode expressionNode)

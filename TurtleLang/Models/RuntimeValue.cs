@@ -54,7 +54,7 @@ class RuntimeValue
             return (string)Value;
 
         if (Type is StructDefinition)
-            return (string)Value;
+            return $"addr: {(int)Value}"; // This will print the mem addr
 
         throw new ArgumentOutOfRangeException();
     }
