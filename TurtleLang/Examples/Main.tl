@@ -27,5 +27,9 @@ fn Second(i: string) {
 }
 
 fn Third(s: customType) {
+    var str: string = "string";
+    str = "asf";
+    s.str = "new string";
     Print(s.str);
+    Print(str);
 }

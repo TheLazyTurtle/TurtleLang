@@ -103,7 +103,19 @@ class Runner
         
         Debug.Assert(expressionNode.ExpressionType == ExpressionTypes.Assign);
         var stackFrame = _stack.Peek();
-        var variable = stackFrame.GetLocalVariableByName(expressionNode.Left.GetValueAsString()!);
+
+        RuntimeValue? variable;
+        if (expressionNode.Left is VariableByRefAstNode valueByRefAstNode)
+        {
+            var localStruct = stackFrame.GetLocalVariableByName(valueByRefAstNode.StructVariable.GetValueAsString());
+            Debug.Assert(localStruct != null);
+            var structFromHeap = InternalHeap.GetFromAddress(localStruct.GetValueAsInt());
+            variable = structFromHeap.GetVariableByRef(valueByRefAstNode.FieldNameToGetByRef);
+        }
+        else
+        {
+            variable = stackFrame.GetLocalVariableByName(expressionNode.Left.GetValueAsString()!);
+        }
 
         if (variable == null)
         {

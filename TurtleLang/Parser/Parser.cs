@@ -366,6 +366,37 @@ class Parser
     private void ParseVariableOperation()
     {
         var variableToken = _currentToken;
+        var parent = _parents.Peek();
+        VariableAstNode? variableDefinition;
+        
+        if (parent is not FunctionDefinitionAstNode funcDef)
+            throw new Exception("Find a way to get to the funcDef");
+        
+        if (PeekNextToken().TokenType == TokenTypes.Dot)
+        {
+            Expect(TokenTypes.Dot);
+            Expect(TokenTypes.Identifier);
+
+            var structLocal = funcDef.GetLocalByName(variableToken.GetValueAsString());
+            var typeDefinition = structLocal.Type;
+            if (typeDefinition is not StructDefinition structDefinition)
+                throw new Exception("Handle primitives on heap");
+
+            var fieldToGetFromStruct = _currentToken;
+
+            var typeOfField = structDefinition.GetFieldByName(fieldToGetFromStruct.GetValueAsString());
+
+            variableDefinition = new VariableByRefAstNode(_currentToken, structLocal, fieldToGetFromStruct.GetValueAsString(), typeOfField);
+        }
+        else
+        {
+            variableDefinition = funcDef.GetLocalByName(variableToken.GetValueAsString());
+            if (variableDefinition == null)
+            {
+                InterpreterErrorLogger.LogError("Undeclared variable cannot be modified.", variableToken);
+                return;
+            }
+        }
         
         ExpectVariableModificationOperator();
         
@@ -375,17 +406,6 @@ class Parser
         var value = _currentToken;
         var valueType = GetTypeForValue(value);
         var valueAstNode = new ValueAstNode(value, valueType);
-        
-        var parent = _parents.Peek();
-        if (parent is not FunctionDefinitionAstNode funcDef)
-            throw new Exception("Find a way to get to the funcDef");
-        
-        var variableDefinition = funcDef.GetLocalByName(variableToken.GetValueAsString());
-        if (variableDefinition == null)
-        {
-            InterpreterErrorLogger.LogError("Undeclared variable cannot be modified.", variableToken);
-            return;
-        }
         
         var expression = new ExpressionAstNode(variableDefinition, valueAstNode, operatorToken.TokenType.TokenExpressionTypeToExpressionType(), variableToken);
         parent.AddChild(expression);
@@ -542,8 +562,8 @@ class Parser
                     if (typeDefinition is not StructDefinition structDefinition)
                         throw new Exception("Handle primitives on heap");
 
-                    GetNextToken(); // This skips the . (dot)
-                    GetNextToken(); // This will get us the name of the field
+                    Expect(TokenTypes.Dot);
+                    Expect(TokenTypes.Identifier);
                     var fieldToGetFromStruct = _currentToken;
 
                     var typeOfField = structDefinition.GetFieldByName(fieldToGetFromStruct.GetValueAsString());
