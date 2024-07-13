@@ -200,6 +200,9 @@ class Lexer
             case "self":
                 AddToken(TokenTypes.Self, "self");
                 return;
+            case "trait":
+                AddToken(TokenTypes.Trait);
+                return;
         }
         
         AddToken(new Token(TokenTypes.Identifier, str, _currentLineNumber));

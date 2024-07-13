@@ -1,4 +1,7 @@
-﻿
+﻿trait Printable {
+    fn print(self);
+}
+
 struct CustomType {
     i: i32;
     str: string;

@@ -23,6 +23,7 @@ public enum TokenTypes
     Struct,
     Impl,
     Self,
+    Trait,
     New,
     Assign,
     Identifier,

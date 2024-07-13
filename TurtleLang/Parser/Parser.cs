@@ -93,6 +93,9 @@ class Parser
             case TokenTypes.Impl:
                 ParseImpl();
                 break;
+            case TokenTypes.Trait:
+                ParseTrait();
+                break;
             case TokenTypes.Comment:
                 ParseComment();
                 break;
@@ -233,23 +236,15 @@ class Parser
         Expect(TokenTypes.LParen);
         Expect(TokenTypes.Self);
         functionDefinition.AddArgument("self", typeDef);
-        
-        VariableAstNode? selfAstNode = null;
-        if (typeDef is StructDefinition structDefinition)
-        {
-            // selfAstNode = new VariableByRefAstNode(_currentToken, structDefinition, "self", structDefinition);
-            selfAstNode = new VariableAstNode(_currentToken, typeDef);
-        }
-        else
-        {
-            selfAstNode = new VariableAstNode(_currentToken, typeDef);
-        }
+
+        var selfAstNode = new VariableAstNode(_currentToken, typeDef);
 
         functionImpl.AddArgument(selfAstNode);
 
         if (PeekNextToken()!.TokenType == TokenTypes.Comma)
             GetNextToken();
 
+        // Get the params
         while (PeekNextToken()!.TokenType != TokenTypes.RParen)
         {
             if (_currentToken.TokenType == TokenTypes.Identifier)
@@ -286,6 +281,60 @@ class Parser
         
         Expect(TokenTypes.RCurly);
         functionImpl.AddChild(new AstNode(Opcode.Return, null)); // Implicit return
+    }
+
+    private void ParseTrait()
+    {
+        Expect(TokenTypes.Identifier);
+        var traitName = _currentToken;
+        var traitDefinition = new TraitDefinition(traitName.GetValueAsString());
+        TraitDefinitions.AddOrDefine(traitDefinition.Name, traitDefinition);
+        
+        Expect(TokenTypes.LCurly);
+
+        while (PeekNextToken()!.TokenType != TokenTypes.RCurly)
+        {
+            Expect(TokenTypes.Fn);
+            Expect(TokenTypes.Identifier);
+            var functionName = _currentToken;
+            var functionDefinition = new FunctionDefinition(functionName.GetValueAsString());
+            
+            Expect(TokenTypes.LParen);
+            
+            // Make sure that it gets a self
+            Expect(TokenTypes.Self);
+            functionDefinition.AddArgument("self", null);
+
+            if (PeekNextToken()!.TokenType == TokenTypes.Comma)
+                GetNextToken();
+
+            // Get the params
+            while (PeekNextToken()!.TokenType != TokenTypes.Semicolon)
+            {
+                if (_currentToken.TokenType == TokenTypes.Identifier)
+                {
+                    var identifierNameToken = _currentToken;
+                    Expect(TokenTypes.Colon);
+                    Expect(TokenTypes.Identifier);
+                    var typeName = _currentToken;
+                    TypeDefinitions.AddOrDefine(typeName.GetValueAsString(), null);
+                    var type = GetType(typeName.GetValueAsString());
+            
+                    functionDefinition.AddArgument(identifierNameToken.GetValueAsString(), type);
+                    
+                    ExpectEither(TokenTypes.Comma, TokenTypes.RParen);
+                }
+                else
+                {
+                    GetNextToken();
+                }
+            }
+            
+            Expect(TokenTypes.Semicolon);
+        }
+        
+        Expect(TokenTypes.RCurly);
+        GetNextToken(); // To skip RCurly
     }
 
     private void ParseVarDeclaration()
