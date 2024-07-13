@@ -10,7 +10,7 @@ class FunctionDefinitionAstNode: ScopeableAstNode
     public List<VariableAstNode>? Arguments { get; set; }
     public int ArgumentCount => Arguments?.Count ?? 0;
     
-    public FunctionDefinitionAstNode(Opcode opcode, Token? token) : base(opcode, token)
+    public FunctionDefinitionAstNode(Token? token) : base(Opcode.FunctionDefinition, token)
     {
     }
 

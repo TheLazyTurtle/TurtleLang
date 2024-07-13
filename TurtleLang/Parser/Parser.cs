@@ -57,9 +57,7 @@ class Parser
                 break;
             case TokenTypes.LParen:
                 if (_parents.Peek() is FunctionDefinitionAstNode funcDef)
-                {
                     ParseParameterDefinition(funcDef);
-                }
                 break;
             case TokenTypes.LCurly:
                 _curlyCount++;
@@ -91,6 +89,55 @@ class Parser
                 break;
             case TokenTypes.Struct:
                 ParseStruct();
+                break;
+            case TokenTypes.Impl:
+                ParseImpl();
+                break;
+            case TokenTypes.Comment:
+                ParseComment();
+                break;
+            case TokenTypes.Eof:
+            case TokenTypes.RParen:
+                GetNextToken(); // Just skip it as it has no meaning
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+    }
+    private void ParseInnerExpression(Token token)
+    {
+        switch (token.TokenType)
+        {
+            case TokenTypes.Var:
+                ParseVarDeclaration();
+                break;
+            case TokenTypes.Identifier:
+                ParseIdentifier();
+                break;
+            case TokenTypes.LCurly:
+            case TokenTypes.RCurly:
+                GetNextToken();
+                break;
+            case TokenTypes.Semicolon:
+                GetNextToken(); // Just skip it as it has no meaning
+                if (_parents.Peek().Opcode == Opcode.Call)
+                    _parents.Pop();
+                break;
+            case TokenTypes.String:
+            case TokenTypes.Int:
+                GetNextToken(); // Just skip it as it has no meaning
+                break;
+            case TokenTypes.Comma:
+                GetNextToken(); // Just skip it as it has no meaning
+                break;
+            case TokenTypes.If:
+                ParseIfStatement();
+                break;
+            case TokenTypes.Else:
+                ParseElseStatement();
+                break;
+            case TokenTypes.For:
+                ParseFor();
                 break;
             case TokenTypes.Comment:
                 ParseComment();
@@ -148,6 +195,97 @@ class Parser
         
         Expect(TokenTypes.RCurly);
         GetNextToken(); // To skip RCurly
+    }
+    
+    private void ParseImpl()
+    {
+        // Type identifier
+        Expect(TokenTypes.Identifier);
+        var typeIdentifier = _currentToken;
+        var typeDef = TypeDefinitions.GetByName(typeIdentifier.GetValueAsString());
+
+        if (typeDef == null)
+            throw new Exception("We prob have to define the type here and it will be declared later");
+        
+        Expect(TokenTypes.LCurly);
+        
+        // Process all func decls;
+        while (PeekNextToken()!.TokenType != TokenTypes.RCurly)
+        {
+            ParseImplFunction(typeDef);
+        }
+        
+        Expect(TokenTypes.RCurly);
+        GetNextToken(); // To skip RCurly
+    }
+
+    private void ParseImplFunction(TypeDefinition typeDef)
+    {
+        Expect(TokenTypes.Fn);
+        
+        Expect(TokenTypes.Identifier);
+        var functionName = _currentToken;
+        var functionDefinition = new FunctionDefinition(functionName.GetValueAsString());
+        var functionImpl = new FunctionDefinitionAstNode(functionName);
+        _parents.Push(functionImpl);
+        typeDef.AddFunction(functionDefinition, functionImpl);
+        
+        Expect(TokenTypes.LParen);
+        Expect(TokenTypes.Self);
+        functionDefinition.AddArgument("self", typeDef);
+        
+        VariableAstNode? selfAstNode = null;
+        if (typeDef is StructDefinition structDefinition)
+        {
+            // selfAstNode = new VariableByRefAstNode(_currentToken, structDefinition, "self", structDefinition);
+            selfAstNode = new VariableAstNode(_currentToken, typeDef);
+        }
+        else
+        {
+            selfAstNode = new VariableAstNode(_currentToken, typeDef);
+        }
+
+        functionImpl.AddArgument(selfAstNode);
+
+        if (PeekNextToken()!.TokenType == TokenTypes.Comma)
+            GetNextToken();
+
+        while (PeekNextToken()!.TokenType != TokenTypes.RParen)
+        {
+            if (_currentToken.TokenType == TokenTypes.Identifier)
+            {
+                var identifierNameToken = _currentToken;
+                Expect(TokenTypes.Colon);
+                Expect(TokenTypes.Identifier);
+                var typeName = _currentToken;
+                TypeDefinitions.AddOrDefine(typeName.GetValueAsString(), null);
+                var type = GetType(typeName.GetValueAsString());
+        
+                var variableAstNode = new VariableAstNode(identifierNameToken, type);
+        
+                functionImpl.AddArgument(variableAstNode);
+                functionDefinition.AddArgument(identifierNameToken.GetValueAsString(), type);
+                ExpectEither(TokenTypes.Comma, TokenTypes.RParen);
+            }
+            else
+            {
+                GetNextToken();
+            }
+        }
+        
+        Expect(TokenTypes.RParen);
+        Expect(TokenTypes.LCurly);
+        
+        // Parse the body
+        while (PeekNextToken()!.TokenType != TokenTypes.RCurly)
+        {
+            ParseInnerExpression(GetNextToken());
+        }
+
+        _parents.Pop();
+        
+        Expect(TokenTypes.RCurly);
+        functionImpl.AddChild(new AstNode(Opcode.Return, null)); // Implicit return
     }
 
     private void ParseVarDeclaration()
@@ -331,7 +469,7 @@ class Parser
             InterpreterErrorLogger.LogError("Cannot define function in scope", _currentToken);
         
         Expect(TokenTypes.Identifier);
-        var functionDefinition = new FunctionDefinitionAstNode(Opcode.FunctionDefinition, _currentToken);
+        var functionDefinition = new FunctionDefinitionAstNode(_currentToken);
         
         DefineFunction(functionDefinition);
         _ast.AddChild(functionDefinition);
@@ -341,26 +479,64 @@ class Parser
 
     private void ParseIdentifier()
     {
-        var expected = PeekNextToken();
-        if (expected!.TokenType != TokenTypes.LParen)
+        if (!IsIdentifierFunction())
         {
             ParseVariableOperation();
             return;
         }
+
+        AstNode callNode;
+        var scopeableAstNode = _parents.Peek();
         
-        var callToken = _currentToken;
-            
-        Expect(TokenTypes.LParen);
-        if (_parents.Peek() is not ScopeableAstNode scopeableAstNode)
-            return;
+        if (PeekNextToken()!.TokenType == TokenTypes.LParen)
+        {
+            var callToken = _currentToken;
+            Expect(TokenTypes.LParen);
+                    
+            callNode = new AstNode(Opcode.Call, callToken);
+            ParseParameterValues(callNode);
                 
-        var callNode = new AstNode(Opcode.Call, callToken);
+            FunctionDefinitions.Add(callToken.GetValueAsString(), null);
+            scopeableAstNode.AddChild(callNode);
+            Expect(TokenTypes.Semicolon);
+            
+            return;
+        }
+        
+        if (scopeableAstNode is not FunctionDefinitionAstNode funcDef)
+        {
+            Debug.Assert(false);
+            return;
+        }
+
+        var structIdentifier = _currentToken;
+        Expect(TokenTypes.Dot);
+        Expect(TokenTypes.Identifier);
+        var functionName = _currentToken;
+        
+        Expect(TokenTypes.LParen);
+        var selfValue = funcDef.GetLocalByName(structIdentifier.GetValueAsString());
+        
+        callNode = new CallMethodAstNode(selfValue.Type.Name, functionName);
+        callNode.AddChild(selfValue);
+        
         ParseParameterValues(callNode);
             
-        FunctionDefinitions.Add(callToken.GetValueAsString(), null);
         scopeableAstNode.AddChild(callNode);
-            
         Expect(TokenTypes.Semicolon);
+    }
+
+    private bool IsIdentifierFunction()
+    {
+        var localOffset = 0;
+        while (_tokens[_currentIndex + localOffset].TokenType != TokenTypes.Semicolon)
+        {
+            if (_tokens[_currentIndex + localOffset].TokenType == TokenTypes.LParen)
+                return true;
+            
+            localOffset++;
+        }
+        return false;
     }
 
     private void ParseVariableOperation()
@@ -549,7 +725,7 @@ class Parser
         
         while (_currentToken.TokenType != TokenTypes.RParen)
         {
-            if (_currentToken.TokenType == TokenTypes.Identifier)
+            if (_currentToken.TokenType == TokenTypes.Identifier || _currentToken.TokenType == TokenTypes.Self)
             {
                 var funcDef = GetFirstFunctionDefinitionNode();
                 

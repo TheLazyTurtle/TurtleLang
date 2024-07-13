@@ -160,7 +160,7 @@ class Lexer
         var currentChar = _code[_currentIndex];
         var str = "";
 
-        while (char.IsLetterOrDigit(currentChar))
+        while (char.IsLetterOrDigit(currentChar) || currentChar == '_')
         {
             str += currentChar;
             
@@ -193,6 +193,12 @@ class Lexer
                 return;
             case "new":
                 AddToken(TokenTypes.New);
+                return;
+            case "impl":
+                AddToken(TokenTypes.Impl);
+                return;
+            case "self":
+                AddToken(TokenTypes.Self, "self");
                 return;
         }
         

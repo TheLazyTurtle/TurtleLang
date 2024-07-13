@@ -194,7 +194,18 @@ class SemanticParser
                 if (child.Opcode != Opcode.Call)
                     continue;
 
-                var astNode = FunctionDefinitions.Get(child.GetValueAsString()!);
+                AstNode? astNode;
+                if (child is CallMethodAstNode methodCallAstNode)
+                {
+                    var structDefinition = TypeDefinitions.GetByName(methodCallAstNode.NameOfStruct);
+                    Debug.Assert(structDefinition != null, "If this is null we need more checks");
+                    astNode = structDefinition.GetFunctionByName(methodCallAstNode.GetValueAsString());
+                }
+                else
+                {
+                    astNode = FunctionDefinitions.Get(child.GetValueAsString()!);
+                }
+
                 if (astNode is FunctionDefinitionAstNode functionDefinitionToValidate)
                 {
                     Debug.Assert(functionDefinitionToValidate != null);

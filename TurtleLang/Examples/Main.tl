@@ -1,35 +1,24 @@
-﻿struct customType {
+﻿
+struct CustomType {
     i: i32;
     str: string;
 }
 
+impl CustomType {
+    fn print_values(self) {
+        Print(self.i);
+        Print(self.str);
+    }
+}
+
 fn Main() {
-    var custom: customType = new customType {
+    var custom: CustomType = new CustomType {
         i = 10,
         str = "asdf",
     };
-    Third(custom);
-    //var i: string = "asdf";
-    //i = "jkl;";
-    //Second(i);
+    second(custom);
 }
 
-fn Second(i: string) {
-    for (var j = 0; j < 5; j++) {
-        Print(j);
-    }
-    
-    var k: i32 = 0;
-    if (k == 0) {
-        Print("if still works");
-    }
-    Print(i);
-}
-
-fn Third(s: customType) {
-    var str: string = "string";
-    str = "asf";
-    s.str = "new string";
-    Print(s.str);
-    Print(str);
+fn second(s: CustomType) {
+    s.print_values();
 }

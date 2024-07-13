@@ -21,6 +21,8 @@ public enum TokenTypes
     Decrease,
     Comment,
     Struct,
+    Impl,
+    Self,
     New,
     Assign,
     Identifier,

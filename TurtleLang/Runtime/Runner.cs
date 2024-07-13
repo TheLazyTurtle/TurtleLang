@@ -396,7 +396,17 @@ class Runner
         InternalLogger.Log("Pushed stackframe");
         _stackFrameBeingBuild = null;
 
-        var functionDefinition = FunctionDefinitions.Get(node.GetValueAsString());
+        AstNode? functionDefinition;
+        if (node is CallMethodAstNode methodCallAstNode)
+        {
+            var typeDefinition = TypeDefinitions.GetByName(methodCallAstNode.NameOfStruct);
+            functionDefinition = typeDefinition.GetFunctionByName(methodCallAstNode.GetValueAsString());
+        }
+        else
+        {
+            functionDefinition = FunctionDefinitions.Get(node.GetValueAsString());
+        }
+
 
         if (functionDefinition is FunctionDefinitionAstNode functionNode)
         {

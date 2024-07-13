@@ -1,8 +1,39 @@
-﻿namespace TurtleLang.Models.Types;
+﻿using TurtleLang.Models.Ast;
+
+namespace TurtleLang.Models.Types;
 
 class TypeDefinition: IEquatable<TypeDefinition>
 {
-    protected string Name { get; init; }
+    public string Name { get; init; }
+    private readonly Dictionary<FunctionDefinition, AstNode?> _functions = new();
+
+    public void AddFunctionDefinition(FunctionDefinition functionDefinition)
+    {
+        if (_functions.ContainsKey(functionDefinition))
+        {
+            InterpreterErrorLogger.LogError($"Trying to redefine function {functionDefinition.Name} in type {Name}");
+            return;
+        }
+        
+        _functions.Add(functionDefinition, null);
+    }
+
+    public void AddFunction(FunctionDefinition functionDefinition, AstNode functionImpl)
+    {
+        if (_functions.ContainsKey(functionDefinition) && _functions[functionDefinition] != null)
+        {
+            InterpreterErrorLogger.LogError($"Trying to redefine function {functionDefinition.Name} in type {Name}");
+            return;
+        }
+        
+        _functions.Add(functionDefinition, functionImpl);
+    }
+
+    public AstNode? GetFunctionByName(string name)
+    {
+        var function = _functions.FirstOrDefault(x => x.Key.Name == name);
+        return function.Value;
+    }
 
     public bool Equals(TypeDefinition? other)
     {
