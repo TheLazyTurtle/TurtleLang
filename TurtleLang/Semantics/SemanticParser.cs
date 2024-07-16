@@ -24,12 +24,37 @@ class SemanticParser
 
         success = ValidateStructHasAllFieldsAssigned();
         Debug.Assert(success);
+
+        success = ValidateStructImplementsAllTraitMethods();
+        Debug.Assert(success);
         
         success = FunctionValidationPass();
         Debug.Assert(success);
         
         success = ValidateArguments();
         Debug.Assert(success);
+    }
+
+    private bool ValidateStructImplementsAllTraitMethods()
+    {
+        foreach (var typeDefinition in TypeDefinitions.GetAll())
+        {
+            if (typeDefinition.Value == null)
+                continue;
+            
+            foreach (var traitDef in typeDefinition.Value.GetAllImplementedTraits())
+            {
+                foreach (var functionDefinition in traitDef.GetAllFunctions())
+                {
+                    if (typeDefinition.Value.ContainsFunction(functionDefinition.Key)) 
+                        continue;
+                    
+                    InterpreterErrorLogger.LogError($"Function {functionDefinition.Key} from trait {traitDef.Name} not implemented on type {typeDefinition.Key}.");
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     private bool ValidateStructHasAllFieldsAssigned()
@@ -53,26 +78,26 @@ class SemanticParser
                 todo.Enqueue(child);
             }
 
-            if (current is NewAstNode newAstNode)
+            if (current is not NewAstNode newAstNode) 
+                continue;
+            
+            var definition = newAstNode.Type;
+            if (definition is not StructDefinition structDefinition)
+                throw new Exception("Handle adding base types to heap");
+
+            if (newAstNode.GetAssignedValueCount() != structDefinition.GetFieldCount())
             {
-                var definition = newAstNode.Type;
-                if (definition is not StructDefinition structDefinition)
-                    throw new Exception("Handle adding base types to heap");
+                InterpreterErrorLogger.LogError($"Struct is missing fields.", newAstNode);
+                return false;
+            }
 
-                if (newAstNode.GetAssignedValueCount() != structDefinition.GetFieldCount())
+            foreach (var assignedValue in newAstNode.GetAssignedValues())
+            {
+                var assignedVar = assignedValue.Key;
+                if (!structDefinition.ContainsField(assignedVar))
                 {
-                    InterpreterErrorLogger.LogError($"Struct is missing fields.", newAstNode);
+                    InterpreterErrorLogger.LogError($"Tried to assign field that does not exist on struct. Field assigned: {assignedVar}", newAstNode);
                     return false;
-                }
-
-                foreach (var assignedValue in newAstNode.GetAssignedValues())
-                {
-                    var assignedVar = assignedValue.Key;
-                    if (!structDefinition.ContainsField(assignedVar))
-                    {
-                        InterpreterErrorLogger.LogError($"Tried to assign field that does not exist on struct. Field assigned: {assignedVar}", newAstNode);
-                        return false;
-                    }
                 }
             }
         }
@@ -255,7 +280,7 @@ class SemanticParser
             if (passedArgument is not ValueAstNode valueNode) 
                 continue;
             
-            if (valueNode.Type == expectedType)
+            if (valueNode.Type.Equals(expectedType))
                 continue;
                 
             InterpreterErrorLogger.LogError($"Types for arguments passed into function {functionDefinition.GetValueAsString()} do not match. Expected {expectedType}, got {valueNode.Type}");
@@ -278,7 +303,7 @@ class SemanticParser
             if (passedArgument is not ValueAstNode valueNode) 
                 continue;
             
-            if (valueNode.Type == expectedType)
+            if (valueNode.Type.Equals(expectedType))
                 continue;
                 
             return false;

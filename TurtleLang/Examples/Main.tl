@@ -14,6 +14,12 @@ impl CustomType {
     }
 }
 
+impl Printable for CustomType {
+    fn print(self) {
+        self.print_values();
+    }
+}
+
 fn Main() {
     var custom: CustomType = new CustomType {
         i = 10,
@@ -24,4 +30,5 @@ fn Main() {
 
 fn second(s: CustomType) {
     s.print_values();
+    s.print();
 }

@@ -114,6 +114,7 @@ class Parser
             case TokenTypes.Var:
                 ParseVarDeclaration();
                 break;
+            case TokenTypes.Self:
             case TokenTypes.Identifier:
                 ParseIdentifier();
                 break;
@@ -205,6 +206,43 @@ class Parser
         // Type identifier
         Expect(TokenTypes.Identifier);
         var typeIdentifier = _currentToken;
+        if (PeekNextToken().TokenType == TokenTypes.For)
+        {
+            ParseTraitImpl(typeIdentifier);
+            return;
+        }
+
+        ParseStructImpl(typeIdentifier);
+    }
+
+    private void ParseTraitImpl(Token traitIdentifier)
+    {
+        var traitDef = TraitDefinitions.GetByName(traitIdentifier.GetValueAsString());
+        
+        Expect(TokenTypes.For);
+        Expect(TokenTypes.Identifier);
+        var structIdentifier = _currentToken;
+
+        var typeDefinition = TypeDefinitions.GetByName(structIdentifier.GetValueAsString());
+        Debug.Assert(typeDefinition != null);
+        if (traitDef == null)
+            throw new Exception("We have to do this thing where we define it before it is declared");
+        typeDefinition.AddTraitDefinition(traitDef);
+        
+        Expect(TokenTypes.LCurly);
+        
+        // Process all func decls;
+        while (PeekNextToken()!.TokenType != TokenTypes.RCurly)
+        {
+            ParseImplFunction(typeDefinition);
+        }
+        
+        Expect(TokenTypes.RCurly);
+        GetNextToken(); // To skip RCurly
+    }
+
+    private void ParseStructImpl(Token typeIdentifier)
+    {
         var typeDef = TypeDefinitions.GetByName(typeIdentifier.GetValueAsString());
 
         if (typeDef == null)
@@ -298,6 +336,7 @@ class Parser
             Expect(TokenTypes.Identifier);
             var functionName = _currentToken;
             var functionDefinition = new FunctionDefinition(functionName.GetValueAsString());
+            traitDefinition.AddFunctionDefinition(functionDefinition);
             
             Expect(TokenTypes.LParen);
             

@@ -45,6 +45,11 @@ static class TypeDefinitions
         TypeDefinitionByName.Add(name, structDefinition);
     }
 
+    public static Dictionary<string, TypeDefinition?> GetAll()
+    {
+        return TypeDefinitionByName;
+    }
+
     public static IReadOnlyDictionary<string, TypeDefinition?> Proxy_GetAllTypeDefinitions()
     {
         return TypeDefinitionByName;

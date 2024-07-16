@@ -31,4 +31,9 @@ class TraitDefinition
         
         return _functionDefinitions[name];
     }
+
+    public Dictionary<string, FunctionDefinition> GetAllFunctions()
+    {
+        return _functionDefinitions;
+    }
 }

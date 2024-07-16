@@ -6,6 +6,7 @@ class TypeDefinition: IEquatable<TypeDefinition>
 {
     public string Name { get; init; }
     private readonly Dictionary<FunctionDefinition, AstNode?> _functions = new();
+    private readonly List<TraitDefinition> _traitDefinitions = new();
 
     public void AddFunctionDefinition(FunctionDefinition functionDefinition)
     {
@@ -18,6 +19,11 @@ class TypeDefinition: IEquatable<TypeDefinition>
         _functions.Add(functionDefinition, null);
     }
 
+    public bool ContainsFunction(string name)
+    {
+        return _functions.Any(x => x.Key.Name == name);
+    }
+
     public void AddFunction(FunctionDefinition functionDefinition, AstNode functionImpl)
     {
         if (_functions.ContainsKey(functionDefinition) && _functions[functionDefinition] != null)
@@ -27,6 +33,22 @@ class TypeDefinition: IEquatable<TypeDefinition>
         }
         
         _functions.Add(functionDefinition, functionImpl);
+    }
+
+    public void AddTraitDefinition(TraitDefinition traitDefinition)
+    {
+        if (_traitDefinitions.Contains(traitDefinition))
+        {
+            InterpreterErrorLogger.LogError($"Tried to add {traitDefinition.Name} to type {Name}, but it already contains this trait");
+            return;
+        }
+        
+        _traitDefinitions.Add(traitDefinition);
+    }
+
+    public List<TraitDefinition> GetAllImplementedTraits()
+    {
+        return _traitDefinitions;
     }
 
     public AstNode? GetFunctionByName(string name)
