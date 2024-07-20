@@ -29,6 +29,9 @@ fn Main() {
 }
 
 fn second(s: CustomType) {
+    if (s.i == 10) {
+        return;
+    }
     s.print_values();
     s.print();
 }

@@ -31,6 +31,7 @@ public enum TokenTypes
     RParen,
     LCurly,
     RCurly,
+    Return,
     Semicolon,
     Colon,
     String,

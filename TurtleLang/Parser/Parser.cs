@@ -99,6 +99,9 @@ class Parser
             case TokenTypes.Comment:
                 ParseComment();
                 break;
+            case TokenTypes.Return:
+                ParseReturn();
+                break;
             case TokenTypes.Eof:
             case TokenTypes.RParen:
                 GetNextToken(); // Just skip it as it has no meaning
@@ -107,6 +110,7 @@ class Parser
                 throw new ArgumentOutOfRangeException();
         }
     }
+
     private void ParseInnerExpression(Token token)
     {
         switch (token.TokenType)
@@ -146,6 +150,9 @@ class Parser
             case TokenTypes.Comment:
                 ParseComment();
                 break;
+            case TokenTypes.Return:
+                ParseReturn();
+                break;
             case TokenTypes.Eof:
             case TokenTypes.RParen:
                 GetNextToken(); // Just skip it as it has no meaning
@@ -153,6 +160,14 @@ class Parser
             default:
                 throw new ArgumentOutOfRangeException();
         }
+    }
+    
+    private void ParseReturn()
+    {
+        var parent = _parents.Peek();
+        var returnAstNode = new AstNode(Opcode.Return, _currentToken);
+        parent.AddChild(returnAstNode);
+        GetNextToken();
     }
 
     private void ParseComment()
@@ -632,9 +647,8 @@ class Parser
         var variableToken = _currentToken;
         var parent = _parents.Peek();
         VariableAstNode? variableDefinition;
-        
-        if (parent is not FunctionDefinitionAstNode funcDef)
-            throw new Exception("Find a way to get to the funcDef");
+
+        var funcDef = GetFirstFunctionDefinitionNode();
         
         if (PeekNextToken().TokenType == TokenTypes.Dot)
         {
@@ -762,6 +776,20 @@ class Parser
             if (variableNode == null)
             {
                 InterpreterErrorLogger.LogError("Variable was not defined in scope.", _currentToken);
+            }
+
+            if (PeekNextToken()!.TokenType == TokenTypes.Dot)
+            {
+                Expect(TokenTypes.Dot);
+                Expect(TokenTypes.Identifier);
+                var dotVariableName = _currentToken;
+
+                var typeDefinition = TypeDefinitions.GetByName(variableNode.Type.Name);
+                if (typeDefinition is not StructDefinition structDefinition)
+                    throw new Exception("This should not be possible");
+
+                var fieldType = structDefinition.GetFieldByName(dotVariableName.GetValueAsString());
+                return new VariableByRefAstNode(dotVariableName, variableNode, dotVariableName.GetValueAsString(), fieldType);
             }
             
             return new VariableAstNode(token, variableNode.Type);

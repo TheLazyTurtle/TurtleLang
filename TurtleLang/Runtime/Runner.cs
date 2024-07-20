@@ -26,38 +26,37 @@ class Runner
         Debug.Assert(_stack.Count == 1 && _stack.Peek().StackFrameType == StackFrameTypes.Global);
     }
 
-    private void ExecuteNode(AstNode node)
+    // Return bool is for if it has returned
+    private bool ExecuteNode(AstNode node)
     {
         if (node.Opcode is Opcode.Eof)
-            return;
+            return true;
         
         switch (node.Opcode)
         {
             case Opcode.Call:
                 HandleCall(node);
-                return; // After a call it should not do anything
+                return false; // Even though the call did return, we return false to make sure that it will continue the flow after wards
             case Opcode.Return:
                 HandleReturn(node);
-                return;
+                return true;
             case Opcode.If:
-                HandleIfStatement(node);
-                return;
+                return HandleIfStatement(node);
             case Opcode.Else:
                 Debug.Assert(false, "This should not happen as else should be handled by if");
-                return;
+                return false;
             case Opcode.For:
-                HandleFor(node);
-                return;
+                return HandleFor(node);
             case Opcode.Expression:
                 HandleExpression(node);
-                return;
+                return false;
             case Opcode.New:
                 HandleNew(node);
-                return;
+                return false;
         }
 
         if (node is not ScopeableAstNode scopeableAstNode)
-            return;
+            return false;
         
         LoadLocals(scopeableAstNode);
 
@@ -65,8 +64,12 @@ class Runner
         
         foreach (var child in children)
         {
-            ExecuteNode(child);
+            var returned = ExecuteNode(child);
+            if (returned)
+                return true;
         }
+
+        return false;
     }
 
     private void HandleNew(AstNode node)
@@ -127,10 +130,10 @@ class Runner
         variable.Proxy_SetRawValue(valueToSet);
     }
 
-    private void HandleFor(AstNode node)
+    private bool HandleFor(AstNode node)
     {
         if (node is not ForAstNode forNode)
-            return;
+            return false;
         
         var stackFrame = new StackFrame
         {
@@ -139,27 +142,30 @@ class Runner
         _stack.Push(stackFrame);
 
         if (forNode.Initializer == null)
-            return;
+            return false;
         
         stackFrame.CreateLocalVariable(forNode.Initializer.Left.GetValueAsString()!, new RuntimeValue(new IntTypeDefinition(), forNode.Initializer.Right!.GetValueAsInt()!));
         InternalLogger.Log($"Creating local variable with name: {forNode.Initializer.Left.GetValueAsString()!} with value: {forNode.Initializer.Right!.GetValueAsInt()}");
 
         if (forNode.Expression == null)
-            return;
+            return false;
 
         if (forNode.IncrementExpression == null)
-            return;
+            return false;
 
         while (SolveExpression(forNode.Expression))
         {
             foreach (var child in forNode.Children)
             {
-                ExecuteNode(child);
+                var returned = ExecuteNode(child);
+                if (returned)
+                    return true;
             }
             HandleIncrementOrDecrement(forNode.IncrementExpression);
         }
 
         _stack.Pop();
+        return false;
     }
     
     private void HandleIncrementOrDecrement(ExpressionAstNode node)
@@ -178,13 +184,13 @@ class Runner
         leftRuntimeValue.SetValueAsInt(currentValue + 1);
     }
 
-    private void HandleIfStatement(AstNode node)
+    private bool HandleIfStatement(AstNode node)
     {
         InternalLogger.Log("Handling if statement");
         if (node is not IfAstNode ifAstNode)
         {
             InterpreterErrorLogger.LogError("Node was not if node");
-            return;
+            throw new Exception("Node was not if node");
         }
 
         var expression = ifAstNode.Expression;
@@ -194,21 +200,27 @@ class Runner
         if (!solved)
         {
             if (ifAstNode.Else == null)
-                return;
+                return false;
                     
             foreach (var child in ifAstNode.Else.Children)
             {
-                ExecuteNode(child);
+                var returned = ExecuteNode(child);
+                if (returned)
+                    return true;
             }
-            return;
+            return false;
         }
 
         // Handle if branch
         var children = ifAstNode.Children;
         foreach (var child in children)
         {
-            ExecuteNode(child);
+            var returned = ExecuteNode(child);
+            if (returned)
+                return true;
         }
+        
+        return false;
     }
 
     private bool SolveExpression(ExpressionAstNode expressionAstNode)
@@ -267,6 +279,24 @@ class Runner
 
     private RuntimeValue? GetRuntimeValueForExpressionHand(AstNode node)
     {
+        if (node is VariableByRefAstNode variableByRefAstNode)
+        {
+            var count = 0;
+            var stackFrame = _stack.PeekAtIndex(count);
+            while (stackFrame.GetLocalVariableByName(variableByRefAstNode.StructVariable.GetValueAsString()!) == null)
+            {
+                stackFrame = _stack.PeekAtIndex(++count);
+                
+                if (stackFrame.StackFrameType == StackFrameTypes.Function)
+                    break;
+            }
+
+            var structAddr = stackFrame.GetLocalVariableByName(variableByRefAstNode.StructVariable.GetValueAsString()!);
+            Debug.Assert(structAddr != null);
+            var heapValue = InternalHeap.GetFromAddress(structAddr.GetValueAsInt());
+            return heapValue.GetVariableByRef(node.GetValueAsString()!);
+        }
+        
         if (node is VariableAstNode variableNode)
         {
             var count = 0;
