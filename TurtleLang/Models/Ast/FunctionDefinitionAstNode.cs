@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Text;
 using TurtleLang.Models.Types;
+using TurtleLang.Repositories;
 
 namespace TurtleLang.Models.Ast;
 
@@ -9,6 +10,7 @@ class FunctionDefinitionAstNode: ScopeableAstNode
     public List<VariableAstNode> Locals { get; } = new();
     public List<VariableAstNode>? Arguments { get; set; }
     public int ArgumentCount => Arguments?.Count ?? 0;
+    public TypeDefinition? ReturnType { get; private set; }
     
     public FunctionDefinitionAstNode(Token? token) : base(Opcode.FunctionDefinition, token)
     {
@@ -20,6 +22,14 @@ class FunctionDefinitionAstNode: ScopeableAstNode
         Arguments.Add(variable);
         
         AddLocal(variable); // All arguments are also locals
+    }
+
+    public void SetReturnType(TypeDefinition returnType)
+    {
+        if (ReturnType != null)
+            InterpreterErrorLogger.LogError($"Return type already defined for function {GetValueAsString()}");
+        
+        ReturnType = returnType;
     }
     
     public TypeDefinition GetTypeOfArgumentOnIndex(int index)
@@ -50,7 +60,7 @@ class FunctionDefinitionAstNode: ScopeableAstNode
         sb.Append(GetValueAsString());
 
         if (Arguments != null)
-            sb.AppendLine($"({string.Join(',', Arguments)})");
+            sb.AppendLine($"({string.Join(',', Arguments)}) : {ReturnType}");
         else
             sb.AppendLine("()");
 

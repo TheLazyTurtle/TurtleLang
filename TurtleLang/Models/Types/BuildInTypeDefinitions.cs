@@ -2,6 +2,15 @@
 
 namespace TurtleLang.Models.Types;
 
+class VoidTypeDefinition : BaseType
+{
+    public VoidTypeDefinition()
+    {
+        Name = "void";
+        PrimitiveType = PrimitiveType.Void;
+    }
+}
+
 class IntTypeDefinition: BaseType
 {
     public IntTypeDefinition()

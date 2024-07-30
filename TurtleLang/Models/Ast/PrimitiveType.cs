@@ -3,6 +3,7 @@
 enum PrimitiveType
 {
     None,
+    Void,
     Int,
     String,
     Any

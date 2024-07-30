@@ -16,7 +16,15 @@ class SemanticParser
 
     public void Validate()
     {
+        // TODO: Make a pass to validate that the return type of traits matches the return type of the impl.
+        // TODO: Make a pass to validate that all return paths match the type of the return type.
         var success = ValidateAllTypesHaveDefinition();
+        Debug.Assert(success);
+
+        success = ValidateStructImplsHaveReturnType();
+        Debug.Assert(success);
+
+        success = ValidateTraitDefFunctionsHaveReturnType();
         Debug.Assert(success);
         
         success = ValidateAllAssignsHaveCorrectType();
@@ -30,9 +38,64 @@ class SemanticParser
         
         success = FunctionValidationPass();
         Debug.Assert(success);
+
+        success = ValidateEveryFunctionHasReturnType();
+        Debug.Assert(success);
         
         success = ValidateArguments();
         Debug.Assert(success);
+    }
+
+    private bool ValidateTraitDefFunctionsHaveReturnType()
+    {
+        foreach (var traitDefinition in TraitDefinitions.Proxy_GetAllTraits())
+        {
+            foreach (var functionDefinition in traitDefinition.Value.GetAllFunctions())
+            {
+                if (functionDefinition.Value.ReturnType == null)
+                    InterpreterErrorLogger.LogError($"Function {functionDefinition.Key} defined in Trait {traitDefinition.Key} does not have a return type.");
+            }
+        }
+        
+        return true;
+    }
+
+    private bool ValidateStructImplsHaveReturnType()
+    {
+        foreach (var definition in TypeDefinitions.Proxy_GetAllTypeDefinitions())
+        {
+            foreach (var functionDefinition in definition.Value.Proxy_GetAllImplementedFunctions())
+            {
+                if (functionDefinition.Value is not FunctionDefinitionAstNode funcDef)
+                    return false;
+
+                if (funcDef.ReturnType == null)
+                    InterpreterErrorLogger.LogError($"Function {functionDefinition.Key.Name} implemented for {definition.Key} does not have a return type");
+            }
+        }
+
+        return true;
+    }
+
+    private bool ValidateEveryFunctionHasReturnType()
+    {
+        foreach (var functionDefinition in FunctionDefinitions.GetAll())
+        {
+            // TODO: Write handling for this
+            if (functionDefinition.Value is BuildInFunctionAstNode)
+                continue;
+            
+            if (functionDefinition.Value is not FunctionDefinitionAstNode funcDef)
+                return false;
+
+            if (funcDef.ReturnType == null)
+            {
+                InterpreterErrorLogger.LogError($"Function {funcDef.GetValueAsString()} does not have a return type");
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private bool ValidateStructImplementsAllTraitMethods()

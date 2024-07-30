@@ -12,6 +12,7 @@ static class TypeDefinitions
     {
         TypeDefinitionByName.Add("string", new StringTypeDefinition());
         TypeDefinitionByName.Add("i32", new IntTypeDefinition());
+        TypeDefinitionByName.Add("void", new VoidTypeDefinition());
     }
 
     public static bool Contains(string name)

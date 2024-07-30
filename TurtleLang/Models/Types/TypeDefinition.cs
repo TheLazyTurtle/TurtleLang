@@ -57,6 +57,11 @@ class TypeDefinition: IEquatable<TypeDefinition>
         return function.Value;
     }
 
+    public Dictionary<FunctionDefinition, AstNode?> Proxy_GetAllImplementedFunctions()
+    {
+        return _functions;
+    }
+
     public bool Equals(TypeDefinition? other)
     {
         if (other == null)

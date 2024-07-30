@@ -32,4 +32,9 @@ static class TraitDefinitions
         
         TraitDefinitionsByName.Add(name, traitDefinition);
     }
+
+    public static Dictionary<string, TraitDefinition?> Proxy_GetAllTraits()
+    {
+        return TraitDefinitionsByName;
+    }
 }

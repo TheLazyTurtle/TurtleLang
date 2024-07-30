@@ -55,10 +55,6 @@ class Parser
             case TokenTypes.Identifier:
                 ParseIdentifier();
                 break;
-            case TokenTypes.LParen:
-                if (_parents.Peek() is FunctionDefinitionAstNode funcDef)
-                    ParseParameterDefinition(funcDef);
-                break;
             case TokenTypes.LCurly:
                 _curlyCount++;
                 GetNextToken();
@@ -165,9 +161,26 @@ class Parser
     private void ParseReturn()
     {
         var parent = _parents.Peek();
-        var returnAstNode = new AstNode(Opcode.Return, _currentToken);
+
+        ValueAstNode? valueNode = null;
+        if (PeekNextToken()!.TokenType != TokenTypes.Semicolon)
+        {
+            ExpectIdentifierOrValue();
+            var valueOrVariable = _currentToken;
+
+            if (parent is not FunctionDefinitionAstNode funcDef)
+                throw new Exception("Add handling for getting func def");
+
+            if (valueOrVariable.TokenType is TokenTypes.Int or TokenTypes.String)
+                valueNode = new ValueAstNode(valueOrVariable, GetTypeForValue(valueOrVariable));
+            else
+                valueNode = funcDef.GetLocalByName(valueOrVariable.GetValueAsString());
+        }
+        
+        var returnAstNode = new ReturnAstNode(_currentToken, valueNode);
+        Expect(TokenTypes.Semicolon);
+        
         parent.AddChild(returnAstNode);
-        GetNextToken();
     }
 
     private void ParseComment()
@@ -322,6 +335,17 @@ class Parser
         }
         
         Expect(TokenTypes.RParen);
+        
+        Expect(TokenTypes.Colon);
+        Expect(TokenTypes.Identifier);
+        var returnTypeIdentifier = _currentToken;
+        var returnType = TypeDefinitions.GetByName(returnTypeIdentifier.GetValueAsString());
+        if (returnType == null)
+            throw new Exception("Do this thing where we create the type before it is defined");
+        
+        functionDefinition.SetReturnType(returnType);
+        functionImpl.SetReturnType(returnType);
+        
         Expect(TokenTypes.LCurly);
         
         // Parse the body
@@ -363,7 +387,7 @@ class Parser
                 GetNextToken();
 
             // Get the params
-            while (PeekNextToken()!.TokenType != TokenTypes.Semicolon)
+            while (PeekNextToken()!.TokenType != TokenTypes.RParen)
             {
                 if (_currentToken.TokenType == TokenTypes.Identifier)
                 {
@@ -383,6 +407,16 @@ class Parser
                     GetNextToken();
                 }
             }
+            
+            Expect(TokenTypes.RParen); 
+            Expect(TokenTypes.Colon);
+            Expect(TokenTypes.Identifier);
+            var returnTypeIdentifier = _currentToken;
+            var returnType = TypeDefinitions.GetByName(returnTypeIdentifier.GetValueAsString());
+            if (returnType == null)
+                throw new Exception("Do this thing where we create the type before it is defined");
+            
+            functionDefinition.SetReturnType(returnType);
             
             Expect(TokenTypes.Semicolon);
         }
@@ -578,6 +612,19 @@ class Parser
         _ast.AddChild(functionDefinition);
         _parents.Push(functionDefinition);
         Expect(TokenTypes.LParen);
+        
+        ParseParameterDefinitions(functionDefinition);
+        // RParen is asserted by ParseParameterDefinitions function
+        
+        Expect(TokenTypes.Colon);
+        Expect(TokenTypes.Identifier);
+        var returnTypeIdentifier = _currentToken;
+        var returnType = TypeDefinitions.GetByName(returnTypeIdentifier.GetValueAsString());
+        if (returnType == null)
+            throw new Exception("Do this thing where we create the type before it is defined");
+        
+        functionDefinition.SetReturnType(returnType);
+        GetNextToken();
     }
 
     private void ParseIdentifier()
@@ -804,7 +851,7 @@ class Parser
         return new ValueAstNode(token, new StringTypeDefinition());
     }
 
-    private void ParseParameterDefinition(FunctionDefinitionAstNode funcDef)
+    private void ParseParameterDefinitions(FunctionDefinitionAstNode funcDef)
     {
         GetNextToken();
         while (_currentToken.TokenType != TokenTypes.RParen)
